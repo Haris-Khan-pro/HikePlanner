@@ -39,7 +39,8 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { role: "bot", content: "Thinking..." }]);
 
     try {
-      const backendUrl = "http://YOUR_IP:8000/api/chat";
+      const backendUrl = "http://192.168.100.3:8000/api/chat";
+
 
       const res = await fetch(backendUrl, {
         method: "POST",
