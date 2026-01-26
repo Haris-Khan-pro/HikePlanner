@@ -1,4 +1,3 @@
-// components/SearchBar.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { TextInput, TouchableOpacity, View } from 'react-native';
 

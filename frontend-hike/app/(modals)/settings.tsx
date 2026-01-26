@@ -106,7 +106,7 @@ export default function SettingsScreen() {
         {/* Account Section */}
         <SettingSection title="Account" items={accountSettings} />
 
-        {/* Connections Section - Only show if there are items */}
+        {/* Connections Section */}
         {connectionSettings.length > 0 && (
           <SettingSection title="Connections" items={connectionSettings} />
         )}

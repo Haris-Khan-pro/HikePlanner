@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SocialOAuthButton } from "./components/_SocialOAuthButton"; // Add this import
+import { SocialOAuthButton } from "./components/_SocialOAuthButton";
 
 export default function LoginScreen() {
   const { isLoaded, signIn, setActive } = useSignIn();
