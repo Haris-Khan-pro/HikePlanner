@@ -20,7 +20,6 @@ export const SocialOAuthButton = ({ provider }: SocialOAuthButtonProps) => {
 
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
-        // Give Clerk a moment to set the session
         setTimeout(() => {
           router.replace("/(tabs)/explore");
         }, 100);

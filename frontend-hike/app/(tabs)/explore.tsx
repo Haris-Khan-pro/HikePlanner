@@ -14,11 +14,10 @@ export default function ExploreScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
-  const [selectedCategory, setSelectedCategory] = useState("1"); // All Trails
+  const [selectedCategory, setSelectedCategory] = useState("1"); 
   const [trails, setTrails] = useState<Trail[]>(mockTrails);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Filter trails based on search, difficulty, and category
   const filteredTrails = useMemo(() => {
     return trails.filter((trail) => {
       // Search filter
@@ -52,14 +51,12 @@ export default function ExploreScreen() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    // Simulate refresh
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
   };
 
   const handleTrailPress = (trail: Trail) => {
-    // FIX: Use the exact route path format that matches your file structure
     router.push({
       pathname: "/trail/[id]",
       params: { id: trail.id },
