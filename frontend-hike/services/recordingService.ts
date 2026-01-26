@@ -105,10 +105,8 @@ export class RecordingService {
       const prev = points[i - 1];
       const curr = points[i];
 
-      // Distance
       totalDistance += LocationService.calculateDistance(prev, curr);
 
-      // Elevation
       if (prev.elevation && curr.elevation) {
         const elevDiff = curr.elevation - prev.elevation;
         if (elevDiff > 0) {
@@ -121,15 +119,14 @@ export class RecordingService {
         minElevation = Math.min(minElevation, curr.elevation);
       }
 
-      // Speed
       if (curr.speed) {
-        maxSpeed = Math.max(maxSpeed, curr.speed * 3.6); // m/s to km/h
+        maxSpeed = Math.max(maxSpeed, curr.speed * 3.6); 
       }
     }
 
     const duration = this.calculateDuration(points);
-    const avgSpeed = duration > 0 ? (totalDistance / duration) * 3600 : 0; // km/h
-    const avgPace = avgSpeed > 0 ? 60 / avgSpeed : 0; // min/km
+    const avgSpeed = duration > 0 ? (totalDistance / duration) * 3600 : 0; 
+    const avgPace = avgSpeed > 0 ? 60 / avgSpeed : 0;
 
     return {
       distance: totalDistance,
@@ -148,7 +145,7 @@ export class RecordingService {
     if (points.length < 2) return 0;
     const start = points[0].timestamp.getTime();
     const end = points[points.length - 1].timestamp.getTime();
-    return (end - start) / 1000; // seconds
+    return (end - start) / 1000; 
   }
 
   private initializeStats(): HikeStats {

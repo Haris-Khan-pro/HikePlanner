@@ -594,7 +594,7 @@ export default function ProfileScreen() {
                 PRIVATE INFORMATION
               </Text>
 
-              {/* Email */}
+              {/* Email */}   //TODO: This shows user email 'user email'
               <View className="px-5 mb-6">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center flex-1">
@@ -638,7 +638,7 @@ export default function ProfileScreen() {
                 <Text className="text-gray-600 text-sm mb-2">
                   Hike Planner ID
                 </Text>
-                <Text className="text-gray-900 font-medium">5437896242429</Text>
+                <Text className="text-gray-900 font-medium">5437896242429</Text>  //TODO: Make this number to userId 
               </View>
             </View>
 

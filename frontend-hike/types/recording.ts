@@ -1,5 +1,3 @@
-// types/recording.ts
-
 export interface HikePoint {
   latitude: number;
   longitude: number;
