@@ -39,8 +39,10 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { role: "bot", content: "Thinking..." }]);
 
     try {
-      const backendUrl = "http://192.168.100.3:8000/api/chat";
+      const backendUrl = "http://192.168.10.11:8000/api/chat";
 
+      console.log("Sending to:", backendUrl);
+      console.log("Message:", userMessage.content);
 
       const res = await fetch(backendUrl, {
         method: "POST",
@@ -48,20 +50,25 @@ export default function ChatWidget() {
         body: JSON.stringify({ message: userMessage.content }),
       });
 
+      console.log("Response status:", res.status);
+      
       const data = await res.json();
+      console.log("Response data:", data);
 
       setMessages((prev) => {
         const withoutTyping = prev.slice(0, -1);
         return [...withoutTyping, { role: "bot", content: data.reply }];
       });
     } catch (err) {
+      console.error("Fetch error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Server unreachable";
       setMessages((prev) => {
         const withoutTyping = prev.slice(0, -1);
         return [
           ...withoutTyping,
           {
             role: "bot",
-            content: "Server unreachable.",
+            content: `Error: ${errorMessage}`,
           },
         ];
       });
