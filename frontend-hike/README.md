@@ -107,12 +107,12 @@ Make sure you have the following installed:
 <div align="center">
 
 ### Main App Screens
-| Welcome Screen | 
+| Welcome Screen |  |
 |:---:|:---:|
 | <img src="./assets/images/Welcome.jpeg" width="300"> | 
 
 ### Map Screens
-| Map Screen | 
+| Map Screen |  |
 |:---:|:---:|
 | <img src="./assets/images/Map.jpeg" width="300"> | 
 
