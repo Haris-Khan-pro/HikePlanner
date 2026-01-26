@@ -3,7 +3,7 @@ from app.config import GROQ_API_KEY
 
 llm = ChatGroq(
     groq_api_key=GROQ_API_KEY,
-    model_name="llama3-8b-8192",
+    model_name="llama-3.3-70b-versatile",  # Use this one
     temperature=0.7
 )
 
