@@ -9,7 +9,7 @@ export default function RecordScreen() {
         <Text className="text-6xl mb-4">📊</Text>
         <Text className="text-2xl font-bold text-gray-900 mb-2">Activity</Text>
         <Text className="text-gray-600 text-center">
-          Track your hiking activities
+          Track your hiking activities  //TODO: More detailed activity tracking features to be implemented
         </Text>
       </View>
     </SafeScreen>

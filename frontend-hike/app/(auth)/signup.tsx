@@ -4,12 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { SocialOAuthButton } from "./components/_SocialOAuthButton"; // Add this import
+import { SocialOAuthButton } from "./components/_SocialOAuthButton";
 
 export default function SignUpScreen() {
   const router = useRouter();
   const { isLoaded, signUp } = useSignUp();
-  // States
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,7 +35,6 @@ export default function SignUpScreen() {
         strategy: "email_code",
       });
 
-      // DO NOT just show alert and stop
       router.push("./verifyEmail");
 
       Alert.alert(
@@ -78,7 +76,7 @@ export default function SignUpScreen() {
               <Ionicons name="person-outline" size={20} color="#6B7280" />
               <TextInput
                 className="flex-1 ml-3 text-base"
-                placeholder="Enter your name"
+                placeholder="Enter your beautifull name"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -146,7 +144,7 @@ export default function SignUpScreen() {
           <View className="flex-1 h-px bg-gray-300" />
         </View>
 
-        {/* Social Login - UPDATED */}
+        {/* Social Login */}
         <SocialOAuthButton provider="google" />
         <SocialOAuthButton provider="apple" />
 

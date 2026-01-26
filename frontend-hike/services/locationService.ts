@@ -48,14 +48,14 @@ export class LocationService {
 
   async startTracking(): Promise<void> {
     if (this.locationSubscription) {
-      return; // Already tracking
+      return; 
     }
 
     this.locationSubscription = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.BestForNavigation,
-        timeInterval: 1000, // Update every second
-        distanceInterval: 5, // Or every 5 meters
+        timeInterval: 1000, 
+        distanceInterval: 5, 
       },
       (location) => {
         const hikePoint: HikePoint = {
@@ -92,7 +92,7 @@ export class LocationService {
   }
 
   calculateDistance(point1: HikePoint, point2: HikePoint): number {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = this.toRad(point2.latitude - point1.latitude);
     const dLon = this.toRad(point2.longitude - point1.longitude);
     
