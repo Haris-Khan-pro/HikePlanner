@@ -1,4 +1,3 @@
-import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 
 type Props = {
@@ -32,12 +31,12 @@ const styles = StyleSheet.create({
   },
   userBubble: {
     alignSelf: "flex-end",
-    backgroundColor: "#16a34a", // green
+    backgroundColor: "#16a34a", 
     borderTopRightRadius: 4,
   },
   botBubble: {
     alignSelf: "flex-start",
-    backgroundColor: "#1f2933", // dark gray
+    backgroundColor: "#1f2933", 
     borderTopLeftRadius: 4,
   },
   text: {

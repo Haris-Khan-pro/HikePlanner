@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     flex: 1,
-    backgroundColor: "#0f172a", // dark bg
+    backgroundColor: "#0f172a",
   },
   header: {
     flexDirection: "row",

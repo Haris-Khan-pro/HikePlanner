@@ -3,8 +3,7 @@ import { Image, Linking, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function WelcomeScreen() {
-  // Remove navigation prop
-  const router = useRouter(); // Use useRouter hook
+  const router = useRouter(); 
 
   const handleOpenLink = (url: string) => {
     Linking.openURL(url).catch((err) =>
@@ -15,7 +14,7 @@ export default function WelcomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 px-8 mt-8">
-        {/* Logo/Image Section - Takes 60% of screen */}
+        {/* Logo/Image Section */}
         <View className="flex-1.5 justify-end items-center">
           <Image
             source={require("@/assets/images/Adventure logo.jpg")}
