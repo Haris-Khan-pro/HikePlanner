@@ -106,9 +106,20 @@ Make sure you have the following installed:
 
 <div align="center">
 
-| Welcome Screen | Map View | Trail Details |
-|:---:|:---:|:---:|
-| ![Welcome](https://via.placeholder.com/250x500?text=Welcome) | ![Map](https://via.placeholder.com/250x500?text=Map) | ![Details](https://via.placeholder.com/250x500?text=Details) |
+### Main App Screens
+| Welcome Screen | Interactive Map |
+|:---:|:---:|
+| <img src="./assets/images/Welcome.jpeg" width="300"> | 
+
+### Map Screens
+| Map Screen | Interactive Map |
+|:---:|:---:|
+| <img src="./assets/images/Map.jpeg" width="300"> | 
+
+### Trail Details (Two Views)
+| Overview | Advanced Stats |
+|:---:|:---:|
+| <img src="./assets/images/Trails.jpeg" width="300"> | <img src="./assets/images/trail.jpeg" width="300"> |
 
 </div>
 
@@ -240,7 +251,7 @@ Contributions are welcome! Please follow these steps:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE] (LICENSE) file for details.
 
 ---
 
