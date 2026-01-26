@@ -108,12 +108,12 @@ Make sure you have the following installed:
 
 ### Main App Screens
 | Welcome Screen |
-|:---:|:---:|
+|:---:|
 | <img src="./assets/images/Welcome.jpeg" width="300"> | 
 
 ### Map Screens
 | Map Screen |
-|:---:|:---:|
+|:---:|
 | <img src="./assets/images/Map.jpeg" width="300"> | 
 
 ### Trail Details (Two Views)
