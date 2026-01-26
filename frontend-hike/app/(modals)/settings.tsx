@@ -1,19 +1,41 @@
+import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import SafeScreen from "../../components/SafeScreen";
 
 type SettingItem = {
   label: string;
   icon: string;
   onPress: () => void;
+  isDangerous?: boolean;
 };
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const handleNavigate = (screen: string) => {
     router.push(`/(modals)/${screen}` as any);
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Log out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log out",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await signOut();
+            router.replace("/(auth)/welcome" as any);
+          } catch (error) {
+            console.error("Logout failed:", error);
+            Alert.alert("Error", "Failed to log out. Please try again.");
+          }
+        },
+      },
+    ]);
   };
 
   const accountSettings: SettingItem[] = [
@@ -62,7 +84,11 @@ export default function SettingsScreen() {
     items: SettingItem[];
   }) => (
     <View className="mb-6">
-      <Text className="text-lg font-bold text-gray-900 px-5 mb-3">{title}</Text>
+      {title && (
+        <Text className="text-lg font-bold text-gray-900 px-5 mb-3">
+          {title}
+        </Text>
+      )}
       <View className="bg-white rounded-2xl overflow-hidden">
         {items.map((item, index) => (
           <TouchableOpacity
@@ -79,7 +105,7 @@ export default function SettingsScreen() {
                 color="#6B7280"
                 style={{ marginRight: 12 }}
               />
-              <Text className="text-base text-gray-900 font-medium">
+              <Text className="text-base font-medium text-gray-900">
                 {item.label}
               </Text>
             </View>
@@ -113,6 +139,21 @@ export default function SettingsScreen() {
 
         {/* App Info Section */}
         <SettingSection title="App" items={appInfo} />
+
+        {/* Beautiful Logout Button */}
+        <View className="px-5 mb-8 mt-4">
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-red-50 rounded-2xl py-4 border-2 border-red-400 active:bg-red-200"
+          >
+            <View className="flex-row items-center justify-center">
+              <Ionicons name="log-out-outline" size={24} color="#DC2626" />
+              <Text className="text-red-600 font-bold text-lg ml-3">
+                Log Out
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {/* Bottom Padding */}
         <View className="h-6" />
