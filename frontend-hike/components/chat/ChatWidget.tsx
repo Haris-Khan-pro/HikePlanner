@@ -39,7 +39,7 @@ export default function ChatWidget() {
     setMessages((prev) => [...prev, { role: "bot", content: "Thinking..." }]);
 
     try {
-      const backendUrl = "http://192.168.10.11:8000/api/chat";
+      const backendUrl = "http://localhost:8000/api/chat";
 
       console.log("Sending to:", backendUrl);
       console.log("Message:", userMessage.content);
