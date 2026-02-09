@@ -53,6 +53,10 @@ HikePlanner/
    ```bash
    cd backend
    npm install
+
+   first make sure .venv is activated so this is the cmd
+   . .venv/Scripts/activate
+   and to run this server 
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
