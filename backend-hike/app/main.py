@@ -1,25 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.schemas import ChatRequest, ChatResponse
-from app.chatbot.groq_chain import ask_hike_assistant
+from app.routes import users, hikes, chat
 
 app = FastAPI(title="Hike Planner AI Backend")
 
 # Allow Expo / Mobile access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # OK for development
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Register all routes
+app.include_router(users.router)
+app.include_router(hikes.router)
+app.include_router(chat.router)
+
 @app.get("/")
 def root():
-    return {"status": "Hike Planner Backend Running"}
-
-@app.post("/api/chat", response_model=ChatResponse)
-def chat_endpoint(payload: ChatRequest):
-    reply = ask_hike_assistant(payload.message)
-    return {"reply": reply}
+    return {"status": "Hike Planner Backend Running 🏔️"}
