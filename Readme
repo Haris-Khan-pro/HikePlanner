@@ -64,7 +64,7 @@ HikePlanner/
    ```bash
    cd ../front-end
    npm install
-   npm start
+   npx expo start
    ```
 
 4. **Access the application**
