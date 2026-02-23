@@ -1,23 +1,22 @@
-from pydantic import BaseModel, EmailStr
+# backend-hike/app/models/user.py
+
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-# What data we RECEIVE when creating a user
-class UserCreate(BaseModel):
-    username: str
+class UserSyncRequest(BaseModel):
+    # This is the data we receive FROM the frontend
+    clerk_id: str          # Clerk's unique ID for this user
     email: str
-    password: str  # we'll hash this later
+    name: Optional[str] = None
+    profile_image: Optional[str] = None
+    auth_provider: str     # "email" or "google" or "apple"
 
-# What data we SEND BACK (never send password back!)
 class UserResponse(BaseModel):
-    id: str
-    username: str
+    clerk_id: str
     email: str
+    name: Optional[str]
+    profile_image: Optional[str]
+    auth_provider: str
     created_at: datetime
-
-# What's stored IN the database
-class UserInDB(BaseModel):
-    username: str
-    email: str
-    hashed_password: str
-    created_at: datetime = datetime.utcnow()
+    is_new_user: bool      # tells frontend if this was first time signup
