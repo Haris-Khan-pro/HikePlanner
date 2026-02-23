@@ -1,8 +1,13 @@
 // components/activity/ActivityCard.tsx
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Activity } from '@/hooks/useActivities';
-import { formatDistance, formatDuration, formatDate, formatTime } from '@/utils/formatters';
+import { View, Text, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Activity } from "@/hooks/useActivities";
+import {
+  formatDistance,
+  formatDuration,
+  formatDate,
+  formatTime,
+} from "@/utils/formatters";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -26,10 +31,11 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
           </View>
           <View className="flex-1">
             <Text className="text-white font-semibold text-base">
-              {activity.trailName || 'Outdoor Activity'}
+              {activity.trail_name || "Outdoor Activity"}
             </Text>
             <Text className="text-gray-400 text-sm">
-              {formatDate(activity.startTime)} • {formatTime(activity.startTime)}
+              {formatDate(activity.start_time)} •{" "}
+              {formatTime(activity.start_time)}
             </Text>
           </View>
         </View>
@@ -53,7 +59,7 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
         <View className="items-center">
           <Text className="text-gray-400 text-xs mb-1">Elevation</Text>
           <Text className="text-white font-bold text-base">
-            {activity.elevationGain.toFixed(0)}m
+            {activity.elevation_gain.toFixed(0)}m
           </Text>
         </View>
         <View className="items-center">
