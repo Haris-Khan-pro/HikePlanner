@@ -1,101 +1,56 @@
-// hooks/useActivities.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@clerk/clerk-expo';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createApiClient } from '@/lib/api';
+import type { Activity, ActivityCreate } from '@/lib/api';
 
-export interface Activity {
-  id: string;
-  trailId?: string;
-  trailName?: string;
-  startTime: string;
-  endTime: string;
-  distance: number; // meters
-  duration: number; // seconds
-  elevationGain: number; // meters
-  avgSpeed: number; // m/s
-  maxSpeed: number; // m/s
-  calories: number;
-  path: { latitude: number; longitude: number }[];
-}
-
-// Mock data for now
-const mockActivities: Activity[] = [
-  {
-    id: '1',
-    trailName: 'Mountain Trail',
-    startTime: new Date(Date.now() - 86400000).toISOString(),
-    endTime: new Date(Date.now() - 82800000).toISOString(),
-    distance: 5200,
-    duration: 3600,
-    elevationGain: 450,
-    avgSpeed: 1.44,
-    maxSpeed: 2.1,
-    calories: 385,
-    path: [],
-  },
-  {
-    id: '2',
-    trailName: 'Forest Path',
-    startTime: new Date(Date.now() - 172800000).toISOString(),
-    endTime: new Date(Date.now() - 169200000).toISOString(),
-    distance: 3100,
-    duration: 2400,
-    elevationGain: 180,
-    avgSpeed: 1.29,
-    maxSpeed: 1.8,
-    calories: 220,
-    path: [],
-  },
-];
+export type { Activity, ActivityCreate };
 
 export const useActivities = () => {
+  const { getToken } = useAuth();
   return useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
-      // TODO: Replace with real API call
-      // const { api } = await import('@/lib/api');
-      // return api.activities.getAll();
-      return mockActivities;
+      const token = await getToken();
+      return createApiClient(token).activities.getAll();
     },
+    retry: 1,
   });
 };
 
 export const useActivity = (id: string) => {
+  const { getToken } = useAuth();
   return useQuery({
     queryKey: ['activity', id],
     queryFn: async () => {
-      // TODO: Replace with real API call
-      // const { api } = await import('@/lib/api');
-      // return api.activities.getById(id);
-      return mockActivities.find(a => a.id === id);
+      const token = await getToken();
+      return createApiClient(token).activities.getById(id);
     },
+    enabled: !!id,
   });
 };
 
 export const useCreateActivity = () => {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: async (activity: Omit<Activity, 'id'>) => {
-      // TODO: Replace with real API call
-      // const { api } = await import('@/lib/api');
-      // return api.activities.create(activity);
-      console.log('Creating activity:', activity);
-      return { id: Date.now().toString(), ...activity };
+    mutationFn: async (activity: ActivityCreate) => {
+      const token = await getToken();
+      return createApiClient(token).activities.create(activity);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     },
   });
 };
 
 export const useDeleteActivity = () => {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (id: string) => {
-      // TODO: Replace with real API call
-      // const { api } = await import('@/lib/api');
-      // return api.activities.delete(id);
-      console.log('Deleting activity:', id);
+      const token = await getToken();
+      return createApiClient(token).activities.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
