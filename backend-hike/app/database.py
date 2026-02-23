@@ -1,13 +1,13 @@
+# backend-hike/app/database.py
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.config import MONGODB_URL, DATABASE_NAME
 
-# This is like "opening" the filing cabinet
+# Open the connection to MongoDB
 client = AsyncIOMotorClient(MONGODB_URL)
 
-# This picks the specific database (filing cabinet name)
+# Pick our database
 db = client[DATABASE_NAME]
 
-# These are our "drawers" (collections)
+# Our "users" drawer/collection
 users_collection = db["users"]
-hikes_collection = db["hikes"]
-chat_history_collection = db["chat_history"]

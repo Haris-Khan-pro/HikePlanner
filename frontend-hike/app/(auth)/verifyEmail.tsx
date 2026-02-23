@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { syncUserToMongoDB } from "@/services/userService";
 
 const styles = StyleSheet.create({
   container: {
@@ -148,6 +148,15 @@ export default function VerifyEmail() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        // ✅ Save user to MongoDB after email verification
+        if (signUp.emailAddress) {
+          await syncUserToMongoDB({
+            clerkId: signUp.createdUserId!,
+            email: signUp.emailAddress,
+            name: signUp.firstName || "",
+            authProvider: "email",
+          });
+        }    
         // Wait a moment for Clerk to update auth state
         setTimeout(() => {
           router.replace("/(tabs)/explore");
