@@ -2,394 +2,391 @@ import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity, 
+  View,
 } from "react-native";
 import SafeScreen from "../../components/SafeScreen";
 
 export default function ProfileInformationModal() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user: clerkUser, isLoaded } = useUser();
+
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [about, setAbout] = useState("");
-  const [email, setEmail] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordModalStep, setPasswordModalStep] = useState<1 | 2 | 3 | null>(
-    null,
-  );
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [customUsername, setCustomUsername] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      setName(user.fullName || "");
-      setEmail(user.primaryEmailAddress?.emailAddress || "");
-    }
-  }, [user]);
-
-  const handleSelectProfilePicture = async () => {
+  const loadCustomUsername = useCallback(async () => {
+    if (!clerkUser?.id) return;
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
+      setIsLoading(true);
+      const API_URL =
+        process.env.EXPO_PUBLIC_API_URL || "http://192.168.10.10:8000";
+      const response = await fetch(`${API_URL}/api/users/${clerkUser.id}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       });
-
-      if (!result.canceled) {
-        setProfileImage(result.assets[0].uri);
+      if (response.ok) {
+        const userData = await response.json();
+        setCustomUsername(userData.custom_username || "");
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
-      console.error("Image picker error:", error);
+      console.error("Failed to load user profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clerkUser?.id]);
+
+  useEffect(() => {
+    if (isLoaded && clerkUser) {
+      setFirstName(clerkUser.firstName || "");
+      setLastName(clerkUser.lastName || "");
+      loadCustomUsername();
+    }
+  }, [isLoaded, clerkUser, loadCustomUsername]);
+
+  const email = clerkUser?.primaryEmailAddress?.emailAddress || "";
+  const userId = clerkUser?.id || "";
+  const avatarUrl = profileImage || clerkUser?.imageUrl || null;
+  const displayInitial = (firstName || clerkUser?.username || "H")
+    .charAt(0)
+    .toUpperCase();
+
+  const handlePickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission needed", "Allow access to your photo library.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!clerkUser) return;
+    setIsSaving(true);
+    try {
+      // Update Clerk profile
+      await clerkUser.update({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
+
+      // Update custom username in backend
+      if (customUsername.trim()) {
+        const API_URL =
+          process.env.EXPO_PUBLIC_API_URL || "http://192.168.10.10:8000";
+        const response = await fetch(`${API_URL}/api/users/${clerkUser.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            custom_username: customUsername.trim(),
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || "Failed to update username");
+        }
+      }
+
+      Alert.alert("Saved", "Profile updated successfully!");
+      router.back();
+    } catch (err: any) {
+      const msg =
+        err?.message ||
+        err?.errors?.[0]?.longMessage ||
+        err?.errors?.[0]?.message ||
+        "Failed to save. Please try again.";
+      Alert.alert("Error", msg);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone.",
+      "This cannot be undone. All your data will be permanently deleted.",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            Alert.alert("Deleted", "Your account has been deleted.");
-            router.push("/(auth)/welcome" as any);
-          },
-        },
-      ],
-    );
-  };
-
-  const handleSave = () => {
-    Alert.alert("Success", "Profile information saved!");
-  };
-
-  const handleChangeEmail = () => {
-    Alert.prompt(
-      "Change Email",
-      "Enter your new email address",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Change",
-          onPress: (newEmailValue: string | undefined) => {
-            if (newEmailValue && newEmailValue.includes("@")) {
-              setEmail(newEmailValue);
-              Alert.alert("Success", "Email changed successfully!");
-            } else {
-              Alert.alert("Error", "Please enter a valid email address");
+          onPress: async () => {
+            try {
+              await clerkUser?.delete();
+              router.replace("/(auth)/welcome" as any);
+            } catch {
+              Alert.alert("Error", "Failed to delete account.");
             }
           },
         },
       ],
-      "plain-text",
     );
   };
 
-  const handleChangePassword = () => {
-    setPasswordModalStep(1);
-  };
-
-  const handlePasswordStepNext = () => {
-    if (passwordModalStep === 1) {
-      if (!currentPassword) {
-        Alert.alert("Error", "Please enter your current password");
-        return;
-      }
-      setPasswordModalStep(2);
-    } else if (passwordModalStep === 2) {
-      if (!newPassword || newPassword.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters");
-        return;
-      }
-      setPasswordModalStep(3);
-    }
-  };
-
-  const handlePasswordConfirm = () => {
-    if (confirmPassword !== newPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-    Alert.alert("Success", "Password changed successfully!");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordModalStep(null);
-  };
-
-  const closePasswordModal = () => {
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPasswordModalStep(null);
-  };
+  if (!isLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#16a34a" />
+      </View>
+    );
+  }
 
   return (
-    <SafeScreen className="bg-white flex-1">
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeScreen>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         {/* Header */}
-        <View className="px-5 pt-4 pb-6 flex-row items-center">
+        <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={28} color="#111827" />
           </TouchableOpacity>
-          <Text className="text-2xl font-bold text-gray-900 ml-4">
-            Profile Information
-          </Text>
+          <Text style={styles.headerTitle}>Edit Profile</Text>
         </View>
 
-        {/* Profile Picture Section */}
-        <View className="px-5 mb-8 items-center">
-          {profileImage ? (
-            <Image
-              source={{ uri: profileImage }}
-              className="w-24 h-24 rounded-full mb-4"
-            />
-          ) : (
-            <View className="w-24 h-24 bg-yellow-400 rounded-full items-center justify-center mb-4">
-              <Text className="text-5xl">A</Text>
-            </View>
-          )}
+        {/* Avatar */}
+        <View style={styles.avatarSection}>
           <TouchableOpacity
-            onPress={handleSelectProfilePicture}
-            className="flex-row items-center"
+            onPress={handlePickImage}
+            style={{ position: "relative" }}
           >
-            <Ionicons name="image" size={20} color="#16a34a" />
-            <Text className="text-green-600 font-semibold ml-2">
-              Select profile picture
-            </Text>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitial}>{displayInitial}</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={16} color="white" />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handlePickImage}
+            style={styles.changePhotoBtn}
+          >
+            <Ionicons name="image-outline" size={18} color="#16a34a" />
+            <Text style={styles.changePhotoText}>Change Photo</Text>
           </TouchableOpacity>
         </View>
 
-        {/* PUBLIC INFORMATION Section */}
-        <View className="mb-8">
-          <Text className="text-xs font-semibold text-gray-500 px-5 mb-4 uppercase">
-            PUBLIC INFORMATION
-          </Text>
-
-          {/* Your Name */}
-          <View className="px-5 mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="person" size={20} color="#6B7280" />
-              <Text className="text-gray-700 font-medium ml-3">Your name</Text>
-            </View>
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>First Name</Text>
             <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Enter your name"
-              placeholderTextColor="#D1D5DB"
-              className="border-b border-gray-300 py-3 px-0 text-gray-900"
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="First name"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
             />
           </View>
 
-          {/* Website */}
-          <View className="px-5 mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="globe" size={20} color="#6B7280" />
-              <Text className="text-gray-700 font-medium ml-3">Website</Text>
-            </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Last Name</Text>
             <TextInput
-              value={website}
-              onChangeText={setWebsite}
-              placeholder="https://example.com"
-              placeholderTextColor="#D1D5DB"
-              className="border-b border-gray-300 py-3 px-0 text-gray-900"
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Last name"
+              placeholderTextColor="#9CA3AF"
+              style={styles.input}
             />
           </View>
 
-          {/* About */}
-          <View className="px-5 mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="document-text" size={20} color="#6B7280" />
-              <Text className="text-gray-700 font-medium ml-3">About</Text>
-            </View>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Display Username</Text>
             <TextInput
-              value={about}
-              onChangeText={setAbout}
-              placeholder="Tell us about yourself"
-              placeholderTextColor="#D1D5DB"
-              multiline
-              numberOfLines={3}
-              className="border-b border-gray-300 py-3 px-0 text-gray-900"
-              textAlignVertical="top"
+              value={customUsername}
+              onChangeText={(t) =>
+                setCustomUsername(t.toLowerCase().replace(/\s/g, ""))
+              }
+              placeholder="your_username"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+              editable={!isLoading}
             />
+            <Text style={styles.fieldHint}>Lowercase, no spaces</Text>
           </View>
-        </View>
 
-        {/* PRIVATE INFORMATION Section */}
-        <View className="mb-8">
-          <Text className="text-xs font-semibold text-gray-500 px-5 mb-4 uppercase">
-            PRIVATE INFORMATION
-          </Text>
-
-          {/* Email */}
-          <TouchableOpacity
-            onPress={handleChangeEmail}
-            className="px-5 mb-6 flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="mail" size={20} color="#6B7280" />
-              <View className="ml-3 flex-1">
-                <Text className="text-gray-600 text-xs">Email address</Text>
-                <Text className="text-gray-900 font-medium mt-1">{email}</Text>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Email Address</Text>
+            <View style={styles.readOnlyRow}>
+              <Text style={styles.readOnlyValue} numberOfLines={1}>
+                {email}
+              </Text>
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedText}>Verified</Text>
               </View>
             </View>
-            <Text className="text-green-600 font-semibold text-xs">
-              Tap to change
+            <Text style={styles.fieldHint}>
+              Email is managed through your account settings
             </Text>
-          </TouchableOpacity>
+          </View>
 
-          {/* Change Password */}
-          <TouchableOpacity
-            onPress={handleChangePassword}
-            className="px-5 mb-6 flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="lock-closed" size={20} color="#6B7280" />
-              <Text className="text-gray-900 font-medium ml-3">
-                Change password
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
-          </TouchableOpacity>
-        </View>
-
-        {/* ADDITIONAL INFORMATION Section */}
-        <View className="mb-8">
-          <Text className="text-xs font-semibold text-gray-500 px-5 mb-4 uppercase">
-            ADDITIONAL INFORMATION
-          </Text>
-
-          <View className="px-5 mb-6">
-            <Text className="text-gray-600 text-xs mb-2">My ID</Text>
-            <Text className="text-gray-900 font-medium">5437896242429</Text>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Account ID</Text>
+            <Text style={styles.monoText} selectable>
+              {userId || "—"}
+            </Text>
           </View>
         </View>
 
-        {/* Delete Account Button */}
-        <View className="px-5 mb-8">
-          <TouchableOpacity
-            onPress={handleDeleteAccount}
-            className="bg-red-50 rounded-full py-4 border-2 border-red-300 items-center justify-center"
-          >
-            <Text className="text-red-600 font-bold text-center text-lg">
-              Delete Account
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <View className="h-8" />
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={isSaving}
+          style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.saveBtnText}>Save Changes</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleDeleteAccount}
+          style={styles.deleteBtn}
+        >
+          <Text style={styles.deleteBtnText}>Delete Account</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Change Password Modal */}
-      <Modal visible={passwordModalStep !== null} transparent={true}>
-        <View className="flex-1 bg-black/50 justify-center items-center">
-          <View className="bg-white rounded-lg p-6 w-5/6 max-w-sm">
-            {passwordModalStep === 1 && (
-              <>
-                <Text className="text-lg font-bold text-gray-900 mb-4">
-                  Enter Current Password
-                </Text>
-                <TextInput
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Current password"
-                  placeholderTextColor="#D1D5DB"
-                  secureTextEntry={true}
-                  className="border border-gray-300 rounded-lg px-3 py-2 mb-6 text-gray-900"
-                />
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={closePasswordModal}
-                    className="flex-1 py-2 px-4 border border-gray-300 rounded-lg items-center"
-                  >
-                    <Text className="text-gray-700 font-semibold">Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handlePasswordStepNext}
-                    className="flex-1 py-2 px-4 bg-green-600 rounded-lg items-center"
-                  >
-                    <Text className="text-white font-semibold">Next</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {passwordModalStep === 2 && (
-              <>
-                <Text className="text-lg font-bold text-gray-900 mb-4">
-                  Enter New Password
-                </Text>
-                <TextInput
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="New password (min 6 characters)"
-                  placeholderTextColor="#D1D5DB"
-                  secureTextEntry={true}
-                  className="border border-gray-300 rounded-lg px-3 py-2 mb-6 text-gray-900"
-                />
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => setPasswordModalStep(1)}
-                    className="flex-1 py-2 px-4 border border-gray-300 rounded-lg items-center"
-                  >
-                    <Text className="text-gray-700 font-semibold">Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handlePasswordStepNext}
-                    className="flex-1 py-2 px-4 bg-green-600 rounded-lg items-center"
-                  >
-                    <Text className="text-white font-semibold">Next</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {passwordModalStep === 3 && (
-              <>
-                <Text className="text-lg font-bold text-gray-900 mb-4">
-                  Confirm Password
-                </Text>
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm password"
-                  placeholderTextColor="#D1D5DB"
-                  secureTextEntry={true}
-                  className="border border-gray-300 rounded-lg px-3 py-2 mb-6 text-gray-900"
-                />
-                <View className="flex-row gap-3">
-                  <TouchableOpacity
-                    onPress={() => setPasswordModalStep(2)}
-                    className="flex-1 py-2 px-4 border border-gray-300 rounded-lg items-center"
-                  >
-                    <Text className="text-gray-700 font-semibold">Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handlePasswordConfirm}
-                    className="flex-1 py-2 px-4 bg-green-600 rounded-lg items-center"
-                  >
-                    <Text className="text-white font-semibold">Confirm</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scroll: { flex: 1, backgroundColor: "white" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  headerTitle: { fontSize: 22, fontWeight: "bold", color: "#111827" },
+  avatarSection: { alignItems: "center", marginBottom: 32 },
+  avatar: { width: 100, height: 100, borderRadius: 50 },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#16a34a",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitial: { color: "white", fontSize: 40, fontWeight: "bold" },
+  cameraBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#16a34a",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "white",
+  },
+  changePhotoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#16a34a",
+  },
+  changePhotoText: { color: "#16a34a", fontWeight: "600", fontSize: 14 },
+  form: { paddingHorizontal: 20, gap: 20, marginBottom: 32 },
+  field: { gap: 6 },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    fontSize: 16,
+    color: "#111827",
+    backgroundColor: "#F9FAFB",
+  },
+  fieldHint: { fontSize: 12, color: "#9CA3AF" },
+  readOnlyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    backgroundColor: "#F9FAFB",
+  },
+  readOnlyValue: { fontSize: 16, color: "#6B7280", flex: 1, marginRight: 8 },
+  verifiedBadge: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+  },
+  verifiedText: { fontSize: 11, color: "#16a34a", fontWeight: "600" },
+  monoText: { fontSize: 13, color: "#6B7280", fontFamily: "monospace" },
+  saveBtn: {
+    marginHorizontal: 20,
+    backgroundColor: "#16a34a",
+    borderRadius: 99,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  saveBtnText: { color: "white", fontSize: 16, fontWeight: "700" },
+  deleteBtn: {
+    marginHorizontal: 20,
+    borderRadius: 99,
+    paddingVertical: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FECACA",
+    backgroundColor: "#FFF5F5",
+  },
+  deleteBtnText: { color: "#DC2626", fontSize: 16, fontWeight: "700" },
+});
