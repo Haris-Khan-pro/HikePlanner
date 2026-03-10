@@ -1,200 +1,266 @@
-// lib/api.ts
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// frontend-hike/lib/api.ts
 
-const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.10.11:8000'  // Your local IP
-  : 'https://your-production-url.com';
+const API_BASE_URL = __DEV__
+  ? "http://192.168.0.106:8000" // ← your machine's local IP (ipconfig on Windows)
+  : "https://your-production-url.com";
 
-class ApiClient {
-  private baseUrl: string;
-  private token: string | null = null;
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.loadToken();
-  }
-
-  private async loadToken() {
-    this.token = await AsyncStorage.getItem('auth_token');
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(this.token && { Authorization: `Bearer ${this.token}` }),
-      ...options.headers,
-    };
-
-    try {
-      const response = await fetch(url, { ...options, headers });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error(`API Error [${endpoint}]:`, error);
-      throw error;
-    }
-  }
-
-  // Trail endpoints
-  trails = {
-    getAll: (filters?: { difficulty?: string; category?: string }) =>
-      this.request<Trail[]>('/api/trails', {
-        method: 'GET',
-        // For now, return mock data until backend is ready
-      }),
-    
-    getById: (id: string) =>
-      this.request<Trail>(`/api/trails/${id}`),
-    
-    save: (id: string) =>
-      this.request<void>(`/api/trails/${id}/save`, { method: 'POST' }),
-    
-    unsave: (id: string) =>
-      this.request<void>(`/api/trails/${id}/save`, { method: 'DELETE' }),
-    
-    getSaved: () =>
-      this.request<Trail[]>('/api/users/me/saved'),
-    
-    addReview: (id: string, review: { rating: number; comment: string }) =>
-      this.request<Review>(`/api/trails/${id}/review`, {
-        method: 'POST',
-        body: JSON.stringify(review),
-      }),
-  };
-
-  // Activity endpoints
-  activities = {
-    create: (data: ActivityCreate) =>
-      this.request<Activity>('/api/activities', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    
-    getAll: () =>
-      this.request<Activity[]>('/api/users/me/activities'),
-    
-    getById: (id: string) =>
-      this.request<Activity>(`/api/activities/${id}`),
-    
-    delete: (id: string) =>
-      this.request<void>(`/api/activities/${id}`, { method: 'DELETE' }),
-  };
-
-  // User endpoints
-  users = {
-    getMe: () =>
-      this.request<User>('/api/users/me'),
-    
-    updateMe: (data: Partial<User>) =>
-      this.request<User>('/api/users/me', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      }),
-  };
-
-  // Chat endpoint (already exists in backend)
-  chat = {
-    send: (message: string) =>
-      this.request<{ reply: string }>('/api/chat', {
-        method: 'POST',
-        body: JSON.stringify({ message }),
-      }),
-  };
-
-  // GPX endpoints
-  gpx = {
-    export: (activityId: string) =>
-      this.request<Blob>(`/api/gpx/export/${activityId}`),
-    
-    import: (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      return this.request<Activity>('/api/gpx/import', {
-        method: 'POST',
-        body: formData,
-        headers: {}, // Let browser set multipart headers
-      });
-    },
-  };
-}
-
-export const api = new ApiClient(API_BASE_URL);
-
-// Types (move to types/api.ts later)
 export interface Trail {
   id: string;
   name: string;
   location: string;
-  distance: number;
-  duration: number;
-  difficulty: 'Easy' | 'Moderate' | 'Hard' | 'Expert';
-  elevation: number;
-  rating: number;
-  reviews: number;
-  image: string;
   description: string;
+  distance: number;        // kilometers
+  duration: number;        // minutes
+  difficulty: "Easy" | "Moderate" | "Hard" | "Expert";
+  elevation: number;       // meters
+  rating: number;          // 0.0 – 5.0
+  review_count: number;
+  image?: string;
   isFeatured: boolean;
   isPopular: boolean;
-  isSaved: boolean;
+  isSaved?: boolean;       // local UI state only
   latitude: number;
   longitude: number;
   tags: string[];
-}
-
-export interface Activity {
-  id: string;
-  trailId?: string;
-  userId: string;
-  startTime: string;
-  endTime: string;
-  distance: number;
-  duration: number;
-  elevationGain: number;
-  gpxData?: string;
-  path: { latitude: number; longitude: number }[];
-  stats: ActivityStats;
-}
-
-export interface ActivityStats {
-  avgSpeed: number;
-  maxSpeed: number;
-  avgPace: number;
-  calories: number;
-}
-
-export interface ActivityCreate {
-  trailId?: string;
-  startTime: string;
-  endTime: string;
-  distance: number;
-  duration: number;
-  elevationGain: number;
-  gpxData?: string;
-  path: { latitude: number; longitude: number }[];
+  created_at: string;
 }
 
 export interface User {
   id: string;
-  clerkId: string;
+  clerk_user_id?: string;
   email: string;
-  name: string;
-  profilePic?: string;
-  createdAt: string;
+  name?: string;
+  username?: string;
+  custom_username?: string;
+  profile_image?: string;
+  about?: string;
+  website?: string;
+  auth_provider: string;
+  saved_trails: string[];
+  completed_activities: number;
+  total_distance_km: number;
+  created_at: string;
+  last_login?: string;
 }
 
-export interface Review {
-  id: string;
-  userId: string;
-  trailId: string;
-  rating: number;
-  comment: string;
-  createdAt: string;
+export interface GpsPoint {
+  latitude: number;
+  longitude: number;
 }
+
+export interface ActivityCreate {
+  clerk_user_id: string;
+  trail_id?: string;
+  trail_name?: string;
+  start_time: string;      // ISO string
+  end_time: string;        // ISO string
+  distance: number;        // meters
+  duration: number;        // seconds
+  elevation_gain: number;  // meters
+  avg_speed: number;       // m/s
+  max_speed: number;       // m/s
+  calories: number;
+  path: GpsPoint[];
+}
+
+export interface Activity extends ActivityCreate {
+  id: string;
+  created_at: string;
+}
+
+export interface ActivityStats {
+  total_activities: number;
+  total_distance_km: number;
+  total_duration_hours: number;
+  total_calories: number;
+  total_elevation_m: number;
+}
+
+export interface ReviewCreate {
+  trail_id: string;
+  clerk_user_id: string;
+  rating: number;          // 1.0 – 5.0
+  comment?: string;
+  username?: string;
+}
+
+export interface Review extends ReviewCreate {
+  id: string;
+  created_at: string;
+}
+
+export interface ReviewUpdate {
+  rating?: number;
+  comment?: string;
+}
+
+export type UserUpdateRequest = Partial<{
+  name: string;
+  username: string;
+  about: string;
+  website: string;
+  profile_image: string;
+}>;
+
+interface BackendUserUpdate {
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  custom_username?: string;
+  about?: string;
+  website?: string;
+  profile_image?: string;
+}
+
+// ── API Client ─────────────────────────────────────────────────────────────────
+
+class ApiClient {
+  private baseUrl: string;
+  private token: string | null;
+
+  constructor(baseUrl: string, token: string | null) {
+    this.baseUrl = baseUrl;
+    this.token = token;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`;
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
+      ...(options.headers || {}),
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`HTTP ${response.status}: ${body}`);
+    }
+    return response.json();
+  }
+
+  // ── Trails ─────────────────────────────────────────────────────────────────
+  trails = {
+    getAll: (params?: {
+      difficulty?: string;
+      search?: string;
+      featured?: boolean;
+      popular?: boolean;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.difficulty && params.difficulty !== "All")
+        query.set("difficulty", params.difficulty);
+      if (params?.search) query.set("search", params.search);
+      if (params?.featured !== undefined)
+        query.set("featured", String(params.featured));
+      if (params?.popular !== undefined)
+        query.set("popular", String(params.popular));
+      const qs = query.toString();
+      return this.request<Trail[]>(`/api/trails${qs ? `?${qs}` : ""}`);
+    },
+    getById: (id: string) =>
+      this.request<Trail>(`/api/trails/${id}`),
+  };
+
+  // ── Users ──────────────────────────────────────────────────────────────────
+  users = {
+    getMe: (clerkUserId: string) =>
+      this.request<User>(`/api/users/${clerkUserId}`),
+
+    updateMe: (clerkUserId: string, data: UserUpdateRequest) => {
+      const backendData: BackendUserUpdate = {};
+      if (data.name) {
+        const parts = data.name.trim().split(" ");
+        backendData.name = data.name.trim();
+        backendData.first_name = parts[0];
+        backendData.last_name = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
+      }
+      if (data.username) backendData.custom_username = data.username;
+      if (data.about !== undefined) backendData.about = data.about;
+      if (data.website !== undefined) backendData.website = data.website;
+      if (data.profile_image !== undefined) backendData.profile_image = data.profile_image;
+      return this.request<User>(`/api/users/${clerkUserId}`, {
+        method: "PUT",
+        body: JSON.stringify(backendData),
+      });
+    },
+
+    saveTrail: (clerkUserId: string, trailId: string) =>
+      this.request<{ message: string }>(
+        `/api/users/${clerkUserId}/saved-trails/${trailId}`,
+        { method: "POST" }
+      ),
+
+    unsaveTrail: (clerkUserId: string, trailId: string) =>
+      this.request<{ message: string }>(
+        `/api/users/${clerkUserId}/saved-trails/${trailId}`,
+        { method: "DELETE" }
+      ),
+  };
+
+  // ── Activities ─────────────────────────────────────────────────────────────
+  activities = {
+    create: (data: ActivityCreate) =>
+      this.request<{ message: string; activity_id: string }>("/api/activities", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    getAll: (clerkUserId: string) =>
+      this.request<Activity[]>(`/api/activities?clerk_user_id=${clerkUserId}`),
+
+    getById: (id: string) =>
+      this.request<Activity>(`/api/activities/${id}`),
+
+    getStats: (clerkUserId: string) =>
+      this.request<ActivityStats>(`/api/activities/stats?clerk_user_id=${clerkUserId}`),
+
+    delete: (id: string) =>
+      this.request<{ message: string }>(`/api/activities/${id}`, {
+        method: "DELETE",
+      }),
+  };
+
+  // ── Reviews ────────────────────────────────────────────────────────────────
+  reviews = {
+    getByTrail: (trailId: string) =>
+      this.request<{ reviews: Review[]; total: number }>(
+        `/api/reviews/trail/${trailId}`
+      ),
+
+    getByUser: (clerkUserId: string) =>
+      this.request<{ reviews: Review[]; total: number }>(
+        `/api/reviews/user/${clerkUserId}`
+      ),
+
+    create: (data: ReviewCreate) =>
+      this.request<{ message: string; review_id: string }>("/api/reviews", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    update: (reviewId: string, data: ReviewUpdate) =>
+      this.request<{ message: string }>(`/api/reviews/${reviewId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+
+    delete: (reviewId: string) =>
+      this.request<{ message: string }>(`/api/reviews/${reviewId}`, {
+        method: "DELETE",
+      }),
+  };
+
+  // ── Chat ───────────────────────────────────────────────────────────────────
+  chat = {
+    send: (message: string) =>
+      this.request<{ reply: string }>("/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      }),
+  };
+}
+
+export const createApiClient = (token: string | null = null) =>
+  new ApiClient(API_BASE_URL, token);
