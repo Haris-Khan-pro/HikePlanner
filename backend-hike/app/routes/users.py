@@ -1,5 +1,3 @@
-# backend-hike/app/routes/users.py
-
 from fastapi import APIRouter, HTTPException
 from passlib.context import CryptContext
 from app.database import users_collection
@@ -35,12 +33,11 @@ async def register_user(user: UserCreate):
     return {"message": "User registered successfully!", "user_id": str(result.inserted_id)}
 
 
-# ── Clerk OAuth sync (called after first login) ───────────────────────────────
+# ── Clerk OAuth sync ──────────────────────────────────────────────────────────
 @router.post("/sync")
 async def sync_clerk_user(user: UserClerkSync):
     existing = await users_collection.find_one({"clerk_user_id": user.clerk_user_id})
     if existing:
-        # Already synced — just update last_login
         await users_collection.update_one(
             {"clerk_user_id": user.clerk_user_id},
             {"$set": {"last_login": datetime.utcnow()}}
@@ -49,7 +46,6 @@ async def sync_clerk_user(user: UserClerkSync):
         del existing["_id"]
         return existing
 
-    # First time — create the user document
     user_in_db = UserInDB(
         clerk_user_id=user.clerk_user_id,
         email=user.email,
