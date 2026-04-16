@@ -1,7 +1,5 @@
-// frontend-hike/lib/api.ts
-
 const API_BASE_URL = __DEV__
-  ? "http://192.168.0.106:8000" // ← your machine's local IP (ipconfig on Windows)
+  ? "http://192.168.0.106:8000"
   : "https://your-production-url.com";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -11,16 +9,16 @@ export interface Trail {
   name: string;
   location: string;
   description: string;
-  distance: number;        // kilometers
-  duration: number;        // minutes
+  distance: number;
+  duration: number;
   difficulty: "Easy" | "Moderate" | "Hard" | "Expert";
-  elevation: number;       // meters
-  rating: number;          // 0.0 – 5.0
+  elevation: number;
+  rating: number;
   review_count: number;
   image?: string;
   isFeatured: boolean;
   isPopular: boolean;
-  isSaved?: boolean;       // local UI state only
+  isSaved?: boolean;
   latitude: number;
   longitude: number;
   tags: string[];
@@ -54,13 +52,13 @@ export interface ActivityCreate {
   clerk_user_id: string;
   trail_id?: string;
   trail_name?: string;
-  start_time: string;      // ISO string
-  end_time: string;        // ISO string
-  distance: number;        // meters
-  duration: number;        // seconds
-  elevation_gain: number;  // meters
-  avg_speed: number;       // m/s
-  max_speed: number;       // m/s
+  start_time: string;
+  end_time: string;
+  distance: number;
+  duration: number;
+  elevation_gain: number;
+  avg_speed: number;
+  max_speed: number;
   calories: number;
   path: GpsPoint[];
 }
@@ -81,7 +79,7 @@ export interface ActivityStats {
 export interface ReviewCreate {
   trail_id: string;
   clerk_user_id: string;
-  rating: number;          // 1.0 – 5.0
+  rating: number;
   comment?: string;
   username?: string;
 }
