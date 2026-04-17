@@ -1,14 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  Alert,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TrailDetailsScreen() {
@@ -60,14 +53,13 @@ export default function TrailDetailsScreen() {
           </TouchableOpacity>
 
           {/* Trail Image */}
-          <Image
-            source={{ uri: trail.image }}
-            className="w-full h-64"
-          />
+          <Image source={{ uri: trail.image }} className="w-full h-64" />
 
           {/* Difficulty Badge */}
           <View className="absolute bottom-4 left-4 bg-red-500 px-4 py-2 rounded-full">
-            <Text className="text-white font-bold text-sm">{trail.difficulty}</Text>
+            <Text className="text-white font-bold text-sm">
+              {trail.difficulty}
+            </Text>
           </View>
         </View>
 
@@ -80,17 +72,17 @@ export default function TrailDetailsScreen() {
 
           <View className="flex-row items-center mb-4">
             <Ionicons name="star" size={18} color="#F59E0B" />
-            <Text className="font-bold text-gray-800 ml-1">
-              {trail.rating}
-            </Text>
+            <Text className="font-bold text-gray-800 ml-1">{trail.rating}</Text>
             <Text className="text-gray-500 ml-1">({trail.reviews})</Text>
             <View className="ml-4 flex-row items-center">
-              <Ionicons name="loop" size={16} color="#666" />
+              <Ionicons name="repeat" size={16} color="#666" />
               <Text className="text-gray-600 ml-1 text-sm">{trail.type}</Text>
             </View>
             <View className="ml-4 flex-row items-center">
               <Ionicons name="walk" size={16} color="#666" />
-              <Text className="text-gray-600 ml-1 text-sm">{trail.activity}</Text>
+              <Text className="text-gray-600 ml-1 text-sm">
+                {trail.activity}
+              </Text>
             </View>
           </View>
 
@@ -112,7 +104,7 @@ export default function TrailDetailsScreen() {
             </View>
             <TouchableOpacity className="mt-3">
               <Text className="text-amber-600 font-semibold text-sm">
-                See all alerts >
+                See all alerts {">"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -173,7 +165,9 @@ export default function TrailDetailsScreen() {
                     activeTab === tab ? "text-green-600" : "text-gray-500"
                   }`}
                 >
-                  {tab === "tips" ? "Tips & Info" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === "tips"
+                    ? "Tips & Info"
+                    : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -184,19 +178,25 @@ export default function TrailDetailsScreen() {
             <View className="mb-6">
               <Text className="text-lg font-bold text-gray-900 mb-3">Map</Text>
               <Image
-                source={{ uri: "https://via.placeholder.com/400x250?text=Trail+Map" }}
+                source={{
+                  uri: "https://via.placeholder.com/400x250?text=Trail+Map",
+                }}
                 className="w-full h-40 rounded-lg bg-gray-200"
               />
               <TouchableOpacity className="mt-4 bg-green-600 p-4 rounded-lg">
-                <Text className="text-white font-bold text-center">Get directions</Text>
+                <Text className="text-white font-bold text-center">
+                  Get directions
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {activeTab === "tips" && (
             <View className="mb-6">
-              <Text className="text-lg font-bold text-gray-900 mb-4">Tips & Info</Text>
-              
+              <Text className="text-lg font-bold text-gray-900 mb-4">
+                Tips & Info
+              </Text>
+
               <View className="mb-6">
                 <Text className="text-gray-900 font-bold mb-3">Difficulty</Text>
                 <View className="flex-row items-center">
@@ -207,7 +207,9 @@ export default function TrailDetailsScreen() {
               </View>
 
               <View>
-                <Text className="text-gray-900 font-bold mb-3">Fitness Level</Text>
+                <Text className="text-gray-900 font-bold mb-3">
+                  Fitness Level
+                </Text>
                 <View className="flex-row items-center">
                   <Ionicons name="triangle" size={16} color="#D1D5DB" />
                   <Ionicons name="triangle" size={16} color="#D1D5DB" />
@@ -219,22 +221,30 @@ export default function TrailDetailsScreen() {
 
           {activeTab === "waypoints" && (
             <View className="mb-6">
-              <Text className="text-lg font-bold text-gray-900 mb-3">Waypoints</Text>
+              <Text className="text-lg font-bold text-gray-900 mb-3">
+                Waypoints
+              </Text>
               <View className="bg-green-50 border-l-4 border-green-600 p-4 rounded mb-3">
                 <View className="flex-row items-center">
                   <View className="w-8 h-8 rounded-full bg-green-600 items-center justify-center">
                     <Text className="text-white text-xs font-bold">A</Text>
                   </View>
                   <View className="ml-3 flex-1">
-                    <Text className="font-bold text-gray-900">Starting Point</Text>
-                    <Text className="text-gray-500 text-xs">Trail 3 Parking</Text>
+                    <Text className="font-bold text-gray-900">
+                      Starting Point
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                      Trail 3 Parking
+                    </Text>
                   </View>
                 </View>
               </View>
 
               <View className="bg-gray-100 p-4 rounded mb-3">
                 <Image
-                  source={{ uri: "https://via.placeholder.com/300x150?text=Parking" }}
+                  source={{
+                    uri: "https://via.placeholder.com/300x150?text=Parking",
+                  }}
                   className="w-full h-24 rounded mb-2"
                 />
                 <Text className="text-gray-600 text-sm">Trail 3 Parking</Text>
@@ -245,12 +255,16 @@ export default function TrailDetailsScreen() {
 
           {activeTab === "elevation" && (
             <View className="mb-6">
-              <Text className="text-lg font-bold text-gray-900 mb-3">Elevation</Text>
+              <Text className="text-lg font-bold text-gray-900 mb-3">
+                Elevation
+              </Text>
               <Image
-                source={{ uri: "https://via.placeholder.com/400x200?text=Elevation+Chart" }}
+                source={{
+                  uri: "https://via.placeholder.com/400x200?text=Elevation+Chart",
+                }}
                 className="w-full h-32 rounded-lg bg-gray-200 mb-4"
               />
-              
+
               <View className="grid grid-cols-3 gap-3 mb-4">
                 <View className="bg-gray-50 p-3 rounded text-center">
                   <View className="flex-row items-center justify-center mb-1">
@@ -270,7 +284,9 @@ export default function TrailDetailsScreen() {
                   <View className="flex-row items-center justify-center mb-1">
                     <Text className="text-base">⏱</Text>
                   </View>
-                  <Text className="text-gray-900 font-bold text-sm">2 km/h</Text>
+                  <Text className="text-gray-900 font-bold text-sm">
+                    2 km/h
+                  </Text>
                   <Text className="text-gray-500 text-xs">Est. speed</Text>
                 </View>
               </View>
@@ -287,7 +303,11 @@ export default function TrailDetailsScreen() {
             isSaved ? "bg-green-600" : "bg-green-600"
           }`}
         >
-          <Ionicons name={isSaved ? "bookmark" : "bookmark-outline"} size={20} color="white" />
+          <Ionicons
+            name={isSaved ? "bookmark" : "bookmark-outline"}
+            size={20}
+            color="white"
+          />
           <Text className="text-white font-bold ml-2">Save</Text>
         </TouchableOpacity>
 
