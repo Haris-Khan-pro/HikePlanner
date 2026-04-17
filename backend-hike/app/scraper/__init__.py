@@ -1,0 +1,1 @@
+# backend-hike/app/scraper/__init__.py

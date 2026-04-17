@@ -1,38 +1,40 @@
 const API_BASE_URL = __DEV__
-  ? "http://192.168.0.106:8000" // ← CHANGE THIS to your machine's local IP (run: ipconfig on Windows / ifconfig on Mac)
+  ? "http://192.168.0.106:8000"
   : "https://your-production-url.com";
 
-// ── Types ─────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface Trail {
   id: string;
   name: string;
   location: string;
+  description: string;
   distance: number;
   duration: number;
   difficulty: "Easy" | "Moderate" | "Hard" | "Expert";
   elevation: number;
   rating: number;
-  reviews: number;
-  image: string;
-  description: string;
+  review_count: number;
+  image?: string;
   isFeatured: boolean;
   isPopular: boolean;
   isSaved?: boolean;
   latitude: number;
   longitude: number;
   tags: string[];
+  created_at: string;
 }
 
 export interface User {
   id: string;
-  clerk_user_id: string;
+  clerk_user_id?: string;
   email: string;
-  name: string;
+  name?: string;
   username?: string;
+  custom_username?: string;
   profile_image?: string;
-  website?: string;
   about?: string;
+  website?: string;
   auth_provider: string;
   saved_trails: string[];
   completed_activities: number;
@@ -41,42 +43,76 @@ export interface User {
   last_login?: string;
 }
 
+export interface GpsPoint {
+  latitude: number;
+  longitude: number;
+}
+
 export interface ActivityCreate {
+  clerk_user_id: string;
   trail_id?: string;
   trail_name?: string;
   start_time: string;
   end_time: string;
-  distance: number; // meters
-  duration: number; // seconds
+  distance: number;
+  duration: number;
   elevation_gain: number;
-  avg_speed: number; // m/s
-  max_speed: number; // m/s
+  avg_speed: number;
+  max_speed: number;
   calories: number;
-  path: { latitude: number; longitude: number }[];
+  path: GpsPoint[];
 }
 
 export interface Activity extends ActivityCreate {
   id: string;
-  clerk_user_id: string;
   created_at: string;
 }
 
-// Frontend form fields for user profile updates
-export type UserUpdateRequest = Partial<{
-  name?: string;
+export interface ActivityStats {
+  total_activities: number;
+  total_distance_km: number;
+  total_duration_hours: number;
+  total_calories: number;
+  total_elevation_m: number;
+}
+
+export interface ReviewCreate {
+  trail_id: string;
+  clerk_user_id: string;
+  rating: number;
+  comment?: string;
   username?: string;
-  website?: string;
-  about?: string;
+}
+
+export interface Review extends ReviewCreate {
+  id: string;
+  created_at: string;
+}
+
+export interface ReviewUpdate {
+  rating?: number;
+  comment?: string;
+}
+
+export type UserUpdateRequest = Partial<{
+  name: string;
+  username: string;
+  about: string;
+  website: string;
+  profile_image: string;
 }>;
 
-// Backend expects these field names in the PUT request
 interface BackendUserUpdate {
+  name?: string;
   first_name?: string;
   last_name?: string;
   custom_username?: string;
+  about?: string;
+  website?: string;
+  profile_image?: string;
 }
 
-// ── API Client ────────────────────────────────────────────
+// ── API Client ─────────────────────────────────────────────────────────────────
 
 class ApiClient {
   private baseUrl: string;
@@ -87,28 +123,22 @@ class ApiClient {
     this.token = token;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: HeadersInit = {
       "Content-Type": "application/json",
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       ...(options.headers || {}),
     };
-
     const response = await fetch(url, { ...options, headers });
-
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`HTTP ${response.status}: ${body}`);
     }
-
     return response.json();
   }
 
-  // Public — no auth needed
+  // ── Trails ─────────────────────────────────────────────────────────────────
   trails = {
     getAll: (params?: {
       difficulty?: string;
@@ -127,58 +157,100 @@ class ApiClient {
       const qs = query.toString();
       return this.request<Trail[]>(`/api/trails${qs ? `?${qs}` : ""}`);
     },
-    getById: (id: string) => this.request<Trail>(`/api/trails/${id}`),
+    getById: (id: string) =>
+      this.request<Trail>(`/api/trails/${id}`),
   };
 
-  // Protected — require Clerk JWT
-  // Pass clerkUserId (from useUser().user.id) to these methods
+  // ── Users ──────────────────────────────────────────────────────────────────
   users = {
     getMe: (clerkUserId: string) =>
       this.request<User>(`/api/users/${clerkUserId}`),
+
     updateMe: (clerkUserId: string, data: UserUpdateRequest) => {
-      // Map frontend field names to backend field names (snake_case)
       const backendData: BackendUserUpdate = {};
-
       if (data.name) {
-        // Split name into first and last if possible, otherwise use as first_name
-        const nameParts = data.name.trim().split(" ");
-        backendData.first_name = nameParts[0] || undefined;
-        backendData.last_name =
-          nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+        const parts = data.name.trim().split(" ");
+        backendData.name = data.name.trim();
+        backendData.first_name = parts[0];
+        backendData.last_name = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
       }
-
-      if (data.username) {
-        backendData.custom_username = data.username;
-      }
-
-      // Note: website and about are not accepted by the backend UserUpdate schema
-
+      if (data.username) backendData.custom_username = data.username;
+      if (data.about !== undefined) backendData.about = data.about;
+      if (data.website !== undefined) backendData.website = data.website;
+      if (data.profile_image !== undefined) backendData.profile_image = data.profile_image;
       return this.request<User>(`/api/users/${clerkUserId}`, {
         method: "PUT",
         body: JSON.stringify(backendData),
       });
     },
-    // Note: saveTrail, unsaveTrail, getSavedTrails endpoints don't exist in the backend yet
-    // They are intentionally omitted. Implement on backend when needed.
+
+    saveTrail: (clerkUserId: string, trailId: string) =>
+      this.request<{ message: string }>(
+        `/api/users/${clerkUserId}/saved-trails/${trailId}`,
+        { method: "POST" }
+      ),
+
+    unsaveTrail: (clerkUserId: string, trailId: string) =>
+      this.request<{ message: string }>(
+        `/api/users/${clerkUserId}/saved-trails/${trailId}`,
+        { method: "DELETE" }
+      ),
   };
 
+  // ── Activities ─────────────────────────────────────────────────────────────
   activities = {
     create: (data: ActivityCreate) =>
-      this.request<{ message: string; activity_id: string }>(
-        "/api/activities",
-        {
-          method: "POST",
-          body: JSON.stringify(data),
-        },
-      ),
-    getAll: () => this.request<Activity[]>("/api/activities"),
-    getById: (id: string) => this.request<Activity>(`/api/activities/${id}`),
+      this.request<{ message: string; activity_id: string }>("/api/activities", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    getAll: (clerkUserId: string) =>
+      this.request<Activity[]>(`/api/activities?clerk_user_id=${clerkUserId}`),
+
+    getById: (id: string) =>
+      this.request<Activity>(`/api/activities/${id}`),
+
+    getStats: (clerkUserId: string) =>
+      this.request<ActivityStats>(`/api/activities/stats?clerk_user_id=${clerkUserId}`),
+
     delete: (id: string) =>
       this.request<{ message: string }>(`/api/activities/${id}`, {
         method: "DELETE",
       }),
   };
 
+  // ── Reviews ────────────────────────────────────────────────────────────────
+  reviews = {
+    getByTrail: (trailId: string) =>
+      this.request<{ reviews: Review[]; total: number }>(
+        `/api/reviews/trail/${trailId}`
+      ),
+
+    getByUser: (clerkUserId: string) =>
+      this.request<{ reviews: Review[]; total: number }>(
+        `/api/reviews/user/${clerkUserId}`
+      ),
+
+    create: (data: ReviewCreate) =>
+      this.request<{ message: string; review_id: string }>("/api/reviews", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+
+    update: (reviewId: string, data: ReviewUpdate) =>
+      this.request<{ message: string }>(`/api/reviews/${reviewId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+
+    delete: (reviewId: string) =>
+      this.request<{ message: string }>(`/api/reviews/${reviewId}`, {
+        method: "DELETE",
+      }),
+  };
+
+  // ── Chat ───────────────────────────────────────────────────────────────────
   chat = {
     send: (message: string) =>
       this.request<{ reply: string }>("/api/chat", {
@@ -188,11 +260,5 @@ class ApiClient {
   };
 }
 
-/**
- * createApiClient(token)
- *
- * Call this in every hook after: const token = await getToken()
- * The token is a Clerk JWT that the backend verifies against Clerk's JWKS.
- */
 export const createApiClient = (token: string | null = null) =>
   new ApiClient(API_BASE_URL, token);

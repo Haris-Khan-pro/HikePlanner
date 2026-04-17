@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import CategorySection from "../../components/CategorySection";
 import FilterChips from "../../components/FilterChips";
 import SafeScreen from "../../components/SafeScreen";
@@ -20,7 +20,6 @@ export default function ExploreScreen() {
 
   const filteredTrails = useMemo(() => {
     return trails.filter((trail) => {
-      // Search filter
       const matchesSearch =
         trail.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         trail.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -28,20 +27,15 @@ export default function ExploreScreen() {
           tag.toLowerCase().includes(searchQuery.toLowerCase()),
         );
 
-      // Difficulty filter
       const matchesDifficulty =
         selectedDifficulty === "All" || trail.difficulty === selectedDifficulty;
 
-      // Category filter
       let matchesCategory = true;
       if (selectedCategory === "2") {
-        // Featured
         matchesCategory = trail.isFeatured;
       } else if (selectedCategory === "3") {
-        // Popular
         matchesCategory = trail.isPopular;
       } else if (selectedCategory === "5") {
-        // Saved
         matchesCategory = trail.isSaved;
       }
 
@@ -61,11 +55,6 @@ export default function ExploreScreen() {
       pathname: "/trail/[id]",
       params: { id: trail.id },
     });
-
-    // Alternatively, if you have a trail detail screen in a different location:
-    // router.push(`/(tabs)/trail/${trail.id}`);
-    // or
-    // router.push(`/trail/${trail.id}?from=explore`);
   };
 
   const handleToggleSave = (trailId: string) => {
@@ -85,9 +74,18 @@ export default function ExploreScreen() {
         }
       >
         {/* Header */}
-        <View className="px-4 pt-4 pb-2">
-          <Text className="text-3xl font-bold text-white">Explore Trails</Text>
-          <Text className="mt-1 text-white">Discover your next adventure</Text>
+        <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
+          <View>
+            <Text className="text-3xl font-bold text-white">Explore Trails</Text>
+            <Text className="mt-1 text-white">Discover your next adventure</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push("/recommendations")}
+            className="bg-white/20 px-3 py-2 rounded-full flex-row items-center"
+          >
+            <Ionicons name="sparkles-outline" size={14} color="#fff" />
+            <Text className="text-white text-xs font-semibold ml-1">For You</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Search Bar */}

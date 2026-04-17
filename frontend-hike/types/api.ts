@@ -1,16 +1,18 @@
-// types/api.ts
+// frontend-hike/types/api.ts
 
-// Re-export types from lib/api.ts for centralized access
 export type {
   Trail,
-  Activity,
-  ActivityStats,
-  ActivityCreate,
   User,
+  GpsPoint,
+  Activity,
+  ActivityCreate,
+  ActivityStats,
   Review,
-} from '@/lib/api';
+  ReviewCreate,
+  ReviewUpdate,
+  UserUpdateRequest,
+} from "@/lib/api";
 
-// API Response wrappers
 export interface ApiResponse<T> {
   data: T;
   message?: string;
@@ -32,26 +34,16 @@ export interface ApiError {
   details?: Record<string, string[]>;
 }
 
-// Query parameters
 export interface TrailFilters {
-  difficulty?: 'Easy' | 'Moderate' | 'Hard' | 'Expert';
-  minDistance?: number;
-  maxDistance?: number;
-  minElevation?: number;
-  maxElevation?: number;
-  category?: 'featured' | 'popular' | 'nearby' | 'saved';
+  difficulty?: "Easy" | "Moderate" | "Hard" | "Expert";
   search?: string;
+  featured?: boolean;
+  popular?: boolean;
   tags?: string[];
-  page?: number;
-  limit?: number;
 }
 
 export interface ActivityFilters {
   trailId?: string;
   startDate?: string;
   endDate?: string;
-  minDistance?: number;
-  maxDistance?: number;
-  page?: number;
-  limit?: number;
 }
