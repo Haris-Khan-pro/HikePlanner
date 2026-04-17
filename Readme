@@ -54,17 +54,14 @@ HikePlanner/
    cd backend
    npm install
 
-   first make sure .venv is activated so this is the cmd
-   . .venv/Scripts/activate
-   and to run this server 
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   source .venv/Scripts/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 3. **Frontend Setup**
    ```bash
    cd ../front-end
    npm install
-   npm start
+   npx expo start
    ```
 
 4. **Access the application**
