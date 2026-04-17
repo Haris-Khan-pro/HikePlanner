@@ -1,5 +1,9 @@
+declare const __DEV__: boolean;
+
+// For Android emulator, use 10.0.2.2 to reach host's localhost
+// For physical device, change to your machine's local IP
 const API_BASE_URL = __DEV__
-  ? "http://192.168.0.106:8000"
+  ? "http://10.0.2.2:8000"
   : "https://your-production-url.com";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -123,7 +127,10 @@ class ApiClient {
     this.token = token;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: HeadersInit = {
       "Content-Type": "application/json",
@@ -157,8 +164,7 @@ class ApiClient {
       const qs = query.toString();
       return this.request<Trail[]>(`/api/trails${qs ? `?${qs}` : ""}`);
     },
-    getById: (id: string) =>
-      this.request<Trail>(`/api/trails/${id}`),
+    getById: (id: string) => this.request<Trail>(`/api/trails/${id}`),
   };
 
   // ── Users ──────────────────────────────────────────────────────────────────
@@ -172,12 +178,14 @@ class ApiClient {
         const parts = data.name.trim().split(" ");
         backendData.name = data.name.trim();
         backendData.first_name = parts[0];
-        backendData.last_name = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
+        backendData.last_name =
+          parts.length > 1 ? parts.slice(1).join(" ") : undefined;
       }
       if (data.username) backendData.custom_username = data.username;
       if (data.about !== undefined) backendData.about = data.about;
       if (data.website !== undefined) backendData.website = data.website;
-      if (data.profile_image !== undefined) backendData.profile_image = data.profile_image;
+      if (data.profile_image !== undefined)
+        backendData.profile_image = data.profile_image;
       return this.request<User>(`/api/users/${clerkUserId}`, {
         method: "PUT",
         body: JSON.stringify(backendData),
@@ -187,32 +195,36 @@ class ApiClient {
     saveTrail: (clerkUserId: string, trailId: string) =>
       this.request<{ message: string }>(
         `/api/users/${clerkUserId}/saved-trails/${trailId}`,
-        { method: "POST" }
+        { method: "POST" },
       ),
 
     unsaveTrail: (clerkUserId: string, trailId: string) =>
       this.request<{ message: string }>(
         `/api/users/${clerkUserId}/saved-trails/${trailId}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       ),
   };
 
   // ── Activities ─────────────────────────────────────────────────────────────
   activities = {
     create: (data: ActivityCreate) =>
-      this.request<{ message: string; activity_id: string }>("/api/activities", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      this.request<{ message: string; activity_id: string }>(
+        "/api/activities",
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+      ),
 
     getAll: (clerkUserId: string) =>
       this.request<Activity[]>(`/api/activities?clerk_user_id=${clerkUserId}`),
 
-    getById: (id: string) =>
-      this.request<Activity>(`/api/activities/${id}`),
+    getById: (id: string) => this.request<Activity>(`/api/activities/${id}`),
 
     getStats: (clerkUserId: string) =>
-      this.request<ActivityStats>(`/api/activities/stats?clerk_user_id=${clerkUserId}`),
+      this.request<ActivityStats>(
+        `/api/activities/stats?clerk_user_id=${clerkUserId}`,
+      ),
 
     delete: (id: string) =>
       this.request<{ message: string }>(`/api/activities/${id}`, {
@@ -224,12 +236,12 @@ class ApiClient {
   reviews = {
     getByTrail: (trailId: string) =>
       this.request<{ reviews: Review[]; total: number }>(
-        `/api/reviews/trail/${trailId}`
+        `/api/reviews/trail/${trailId}`,
       ),
 
     getByUser: (clerkUserId: string) =>
       this.request<{ reviews: Review[]; total: number }>(
-        `/api/reviews/user/${clerkUserId}`
+        `/api/reviews/user/${clerkUserId}`,
       ),
 
     create: (data: ReviewCreate) =>
@@ -253,7 +265,7 @@ class ApiClient {
   // ── Chat ───────────────────────────────────────────────────────────────────
   chat = {
     send: (message: string) =>
-      this.request<{ reply: string }>("/api/chat", {
+      this.request<{ reply: string }>("/api/chat/", {
         method: "POST",
         body: JSON.stringify({ message }),
       }),
@@ -262,3 +274,6 @@ class ApiClient {
 
 export const createApiClient = (token: string | null = null) =>
   new ApiClient(API_BASE_URL, token);
+
+// Default instance without token
+export const api = createApiClient();

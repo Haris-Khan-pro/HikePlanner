@@ -54,7 +54,7 @@ HikePlanner/
    cd backend
    npm install
 
-   source .venv/Scripts/activate && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   cd /d/Projects/HikePlanner/backend-hike && source .venv/Scripts/activate && uvicorn app.main:app --reload
    ```
 
 3. **Frontend Setup**

@@ -4,23 +4,34 @@ from app.models.chat_history import ChatMessageCreate, ChatMessageInDB
 from app.chatbot.groq_chain import ask_hike_assistant
 from app.schemas import ChatRequest, ChatResponse
 from datetime import datetime
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
+executor = ThreadPoolExecutor(max_workers=2)
 
 @router.post("/", response_model=ChatResponse)
 async def chat_endpoint(payload: ChatRequest):
-    # Get reply from AI
-    reply = ask_hike_assistant(payload.message)
+    try:
+        # Run the blocking Groq API call in a thread pool
+        loop = asyncio.get_event_loop()
+        reply = await loop.run_in_executor(
+            executor, 
+            ask_hike_assistant, 
+            payload.message
+        )
+        
+        # Save conversation to MongoDB
+        chat_record = ChatMessageInDB(
+            user_message=payload.message,
+            bot_reply=reply,
+            created_at=datetime.utcnow()
+        )
+        await chat_history_collection.insert_one(chat_record.dict())
 
-    # Save conversation to MongoDB
-    chat_record = ChatMessageInDB(
-        user_message=payload.message,
-        bot_reply=reply,
-        created_at=datetime.utcnow()
-    )
-    await chat_history_collection.insert_one(chat_record.dict())
-
-    return {"reply": reply}
+        return {"reply": reply}
+    except Exception as e:
+        return {"reply": f"Error: {str(e)}"}
 
 @router.get("/history")
 async def get_chat_history(limit: int = 20):
