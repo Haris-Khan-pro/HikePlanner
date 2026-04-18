@@ -47,4 +47,5 @@ app-example
 # Python
 venv/
 __pycache__/
-.env
+.env.env
+frontend-hike/.env
