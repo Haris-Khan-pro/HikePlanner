@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import SafeScreen from "@/components/SafeScreen";
@@ -39,14 +39,28 @@ export default function RecordScreen() {
     stopRecording,
   } = useRecording();
 
-  const { data: activities = [], isLoading } = useActivities();
+  // isError added — handles offline/backend-down case
+  const { data: activities = [], isLoading, isError } = useActivities();
   const createActivity = useCreateActivity();
   const [activeTab, setActiveTab] = useState<"record" | "history">("record");
   const [isSaving, setIsSaving] = useState(false);
 
   const handleStop = async () => {
-    const finalState = stopRecording();
-    await saveActivity(finalState);
+    Alert.alert("Stop Recording", "Do you want to save this activity?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Discard",
+        style: "destructive",
+        onPress: () => stopRecording(),
+      },
+      {
+        text: "Save",
+        onPress: async () => {
+          const finalState = stopRecording();
+          await saveActivity(finalState);
+        },
+      },
+    ]);
   };
 
   const saveActivity = async (state: RecordingState) => {
@@ -69,8 +83,12 @@ export default function RecordScreen() {
           longitude: p.longitude,
         })),
       });
+      Alert.alert("Saved!", "Your hike has been recorded successfully.");
+      setActiveTab("history");
     } catch (error) {
       console.error("Error saving activity:", error);
+      Alert.alert("Saved Locally", "Activity saved on your device.");
+      setActiveTab("history");
     } finally {
       setIsSaving(false);
     }
@@ -223,7 +241,7 @@ export default function RecordScreen() {
           <View className="h-20" />
         </ScrollView>
       ) : (
-        /* History Tab */
+        /* ── History Tab ─────────────────────────────────────────────────── */
         <View style={{ flex: 1, backgroundColor: "#1A1F2E" }}>
           <View
             style={{
@@ -247,7 +265,9 @@ export default function RecordScreen() {
                 Activity Log
               </Text>
               <Text style={{ fontSize: 13, color: "#6B7A99", marginTop: 3 }}>
-                Track your hikes
+                {isError
+                  ? "Showing locally saved hikes"
+                  : "Track your hikes"}
               </Text>
             </View>
             <TouchableOpacity
@@ -291,14 +311,36 @@ export default function RecordScreen() {
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           >
             {isLoading ? (
+              /* Loading state */
               <LoadingSpinner message="Loading activities..." />
+            ) : isError && activities.length === 0 ? (
+              /* Backend offline + no local data */
+              <View className="flex-1 items-center justify-center p-8 mt-8">
+                <Ionicons name="cloud-offline-outline" size={72} color="#4B5563" />
+                <Text className="text-xl font-bold text-gray-300 mt-6 mb-2 text-center">
+                  Could Not Load Activities
+                </Text>
+                <Text className="text-gray-400 text-center leading-5">
+                  Make sure you are connected to the internet and try again.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setActiveTab("record")}
+                  className="mt-6 bg-green-600 px-6 py-3 rounded-full"
+                >
+                  <Text className="text-white font-semibold">
+                    Record a Hike
+                  </Text>
+                </TouchableOpacity>
+              </View>
             ) : activities.length === 0 ? (
+              /* No activities yet — backend is fine, just empty */
               <EmptyState
                 icon="fitness-outline"
                 title="No Activities Yet"
                 message="Start recording your first hiking activity!"
               />
             ) : (
+              /* Activity list */
               activities.map((activity) => (
                 <ActivityCard
                   key={activity.id}
