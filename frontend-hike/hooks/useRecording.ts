@@ -1,8 +1,13 @@
 // hooks/useRecording.ts
-import { useState, useEffect, useRef } from 'react';
-import { Alert } from 'react-native';
-import LocationService from '@/services/locationService';
-import { calculateTotalDistance, calculateElevationGain, calculateCalories } from '@/utils/calculations';
+import { useState, useEffect, useRef } from "react";
+import { Alert } from "react-native";
+import * as KeepAwake from "expo-keep-awake";
+import LocationService from "@/services/locationService";
+import {
+  calculateTotalDistance,
+  calculateElevationGain,
+  calculateCalories,
+} from "@/utils/calculations";
 
 export interface RecordingState {
   isRecording: boolean;
@@ -41,19 +46,36 @@ export const useRecording = () => {
         clearInterval(intervalRef.current);
       }
       LocationService.stopTracking();
+      // Deactivate keep awake on cleanup
+      try {
+        KeepAwake.deactivateAsync();
+      } catch (error) {
+        console.warn("Failed to deactivate keep awake on cleanup:", error);
+      }
     };
   }, []);
 
   const startRecording = async () => {
     const hasPermission = await LocationService.requestPermissions();
     if (!hasPermission) {
-      Alert.alert('Permission Required', 'Location permission is required to record activities.');
+      Alert.alert(
+        "Permission Required",
+        "Location permission is required to record activities.",
+      );
       return;
     }
 
+    // Activate keep awake with error handling
+    try {
+      await KeepAwake.activateAsync();
+    } catch (error) {
+      console.warn("Failed to activate keep awake:", error);
+      // Don't block recording if keep awake fails
+    }
+
     await LocationService.startTracking();
-    
-    setState(prev => ({
+
+    setState((prev) => ({
       ...prev,
       isRecording: true,
       isPaused: false,
@@ -66,11 +88,13 @@ export const useRecording = () => {
 
     // Update duration every second
     intervalRef.current = setInterval(() => {
-      setState(prev => {
+      setState((prev) => {
         if (!prev.isPaused && prev.startTime) {
           return {
             ...prev,
-            duration: Math.floor((Date.now() - prev.startTime.getTime()) / 1000),
+            duration: Math.floor(
+              (Date.now() - prev.startTime.getTime()) / 1000,
+            ),
           };
         }
         return prev;
@@ -79,7 +103,7 @@ export const useRecording = () => {
 
     // Listen to location updates
     LocationService.addListener((location) => {
-      setState(prev => {
+      setState((prev) => {
         const newPath = [
           ...prev.path,
           {
@@ -90,10 +114,13 @@ export const useRecording = () => {
         ];
 
         const distance = calculateTotalDistance(newPath);
-        const elevations = newPath.map(p => p.elevation || 0).filter(e => e > 0);
+        const elevations = newPath
+          .map((p) => p.elevation || 0)
+          .filter((e) => e > 0);
         const elevationGain = calculateElevationGain(elevations);
         const durationMinutes = prev.duration / 60;
-        const avgSpeed = durationMinutes > 0 ? distance / (durationMinutes * 60) : 0;
+        const avgSpeed =
+          durationMinutes > 0 ? distance / (durationMinutes * 60) : 0;
         const currentSpeed = location.speed || 0;
         const maxSpeed = Math.max(prev.maxSpeed, currentSpeed);
         const calories = calculateCalories(distance, durationMinutes);
@@ -113,11 +140,11 @@ export const useRecording = () => {
   };
 
   const pauseRecording = () => {
-    setState(prev => ({ ...prev, isPaused: true }));
+    setState((prev) => ({ ...prev, isPaused: true }));
   };
 
   const resumeRecording = () => {
-    setState(prev => ({ ...prev, isPaused: false }));
+    setState((prev) => ({ ...prev, isPaused: false }));
   };
 
   const stopRecording = () => {
@@ -126,8 +153,15 @@ export const useRecording = () => {
     }
     LocationService.stopTracking();
 
+    // Deactivate keep awake with error handling
+    try {
+      KeepAwake.deactivateAsync();
+    } catch (error) {
+      console.warn("Failed to deactivate keep awake:", error);
+    }
+
     const finalState = state;
-    
+
     setState({
       isRecording: false,
       isPaused: false,

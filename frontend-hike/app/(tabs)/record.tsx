@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import SafeScreen from "@/components/SafeScreen";
 import ActivityCard from "@/components/activity/ActivityCard";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -17,6 +18,11 @@ import {
 } from "@/utils/formatters";
 
 export default function RecordScreen() {
+  const { trailId, trailName } = useLocalSearchParams<{
+    trailId?: string;
+    trailName?: string;
+  }>();
+
   const {
     isRecording,
     isPaused,
@@ -39,27 +45,17 @@ export default function RecordScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleStop = async () => {
-    Alert.alert("Stop Recording", "Do you want to save this activity?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Discard", style: "destructive", onPress: () => stopRecording() },
-      {
-        text: "Save",
-        onPress: async () => {
-          const finalState = stopRecording();
-          await saveActivity(finalState);
-        },
-      },
-    ]);
+    const finalState = stopRecording();
+    await saveActivity(finalState);
   };
 
-  // Properly typed — no more `any`
   const saveActivity = async (state: RecordingState) => {
     if (!state.startTime) return;
     try {
       setIsSaving(true);
       await createActivity.mutateAsync({
-        trail_id: undefined,
-        trail_name: undefined,
+        trail_id: trailId,
+        trail_name: trailName,
         start_time: state.startTime.toISOString(),
         end_time: new Date().toISOString(),
         distance: state.distance,
@@ -73,10 +69,8 @@ export default function RecordScreen() {
           longitude: p.longitude,
         })),
       });
-      Alert.alert("Saved", "Activity saved successfully!");
-      setActiveTab("history");
-    } catch {
-      Alert.alert("Error", "Failed to save activity. Check your connection.");
+    } catch (error) {
+      console.error("Error saving activity:", error);
     } finally {
       setIsSaving(false);
     }
@@ -106,6 +100,19 @@ export default function RecordScreen() {
 
       {activeTab === "record" ? (
         <ScrollView className="flex-1 px-4">
+          {/* Trail name banner — shown when launched from Start Hike */}
+          {!!trailName && (
+            <View className="bg-green-900/40 border border-green-700 rounded-2xl px-4 py-3 mt-4 flex-row items-center">
+              <Ionicons name="trail-sign-outline" size={20} color="#4ade80" />
+              <Text
+                className="text-green-300 font-semibold ml-2 flex-1"
+                numberOfLines={1}
+              >
+                {trailName}
+              </Text>
+            </View>
+          )}
+
           {/* Main Timer Card */}
           <View className="bg-gray-800 rounded-3xl p-6 my-4">
             <View className="items-center mb-6">
@@ -114,7 +121,6 @@ export default function RecordScreen() {
               </Text>
               <Text className="text-gray-400 text-sm mt-2">Duration</Text>
             </View>
-
             <View className="flex-row justify-around mb-6">
               <View className="items-center">
                 <Text className="text-3xl font-bold text-green-500">
@@ -129,8 +135,6 @@ export default function RecordScreen() {
                 <Text className="text-gray-400 text-sm mt-1">Elevation</Text>
               </View>
             </View>
-
-            {/* Control Buttons */}
             <View className="flex-row justify-center gap-4">
               {!isRecording ? (
                 <TouchableOpacity
@@ -219,32 +223,92 @@ export default function RecordScreen() {
           <View className="h-20" />
         </ScrollView>
       ) : (
-        <ScrollView className="flex-1 px-4">
-          {isLoading ? (
-            <LoadingSpinner message="Loading activities..." />
-          ) : activities.length === 0 ? (
-            <EmptyState
-              icon="fitness-outline"
-              title="No Activities Yet"
-              message="Start recording your first hiking activity!"
-            />
-          ) : (
-            <View className="py-4">
-              <Text className="text-gray-400 mb-4">
-                {activities.length}{" "}
-                {activities.length === 1 ? "activity" : "activities"}
+        /* History Tab */
+        <View style={{ flex: 1, backgroundColor: "#1A1F2E" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              paddingHorizontal: 20,
+              paddingTop: 18,
+              paddingBottom: 18,
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  fontSize: 26,
+                  fontWeight: "800",
+                  color: "#FFFFFF",
+                  letterSpacing: -0.3,
+                }}
+              >
+                Activity Log
               </Text>
-              {activities.map((activity) => (
+              <Text style={{ fontSize: 13, color: "#6B7A99", marginTop: 3 }}>
+                Track your hikes
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setActiveTab("record")}
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 23,
+                backgroundColor: "#2ECC71",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#2ECC71",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.5,
+                shadowRadius: 10,
+                elevation: 8,
+              }}
+            >
+              <Ionicons name="add" size={26} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {!isLoading && activities.length > 0 && (
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: "#3D4A6B",
+                letterSpacing: 1.5,
+                paddingHorizontal: 20,
+                marginBottom: 10,
+              }}
+            >
+              RECENT HIKES
+            </Text>
+          )}
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
+          >
+            {isLoading ? (
+              <LoadingSpinner message="Loading activities..." />
+            ) : activities.length === 0 ? (
+              <EmptyState
+                icon="fitness-outline"
+                title="No Activities Yet"
+                message="Start recording your first hiking activity!"
+              />
+            ) : (
+              activities.map((activity) => (
                 <ActivityCard
                   key={activity.id}
                   activity={activity as any}
                   onPress={(act) => console.log("View activity:", act.id)}
                 />
-              ))}
-            </View>
-          )}
-          <View className="h-20" />
-        </ScrollView>
+              ))
+            )}
+          </ScrollView>
+        </View>
       )}
     </SafeScreen>
   );
