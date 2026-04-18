@@ -49,3 +49,5 @@ venv/
 __pycache__/
 .env.env
 frontend-hike/.env
+frontend-hike/.env
+backend-hike/.env
