@@ -3,7 +3,6 @@
 # dependencies
 node_modules/
 
-
 # Expo
 .expo/
 dist/
@@ -32,8 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
-# .env
+.env.local
+.env.development
+.env.production
 
 # typescript
 *.tsbuildinfo
@@ -46,8 +48,12 @@ app-example
 
 # Python
 venv/
+.venv/
 __pycache__/
-.env.env
+*.pyc
+
+# env files — all locations
 frontend-hike/.env
-frontend-hike/.env
+frontend-hike/.env.local
 backend-hike/.env
+backend-hike/.env.local
