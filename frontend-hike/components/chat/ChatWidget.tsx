@@ -1,5 +1,4 @@
-// components/chat/ChatWidget.tsx
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   FlatList,
   Modal,
@@ -11,82 +10,149 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import ChatBubble from './ChatBubble';
 import ChatInput from './ChatInput';
-import { api } from '@/lib/api';
+
+const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY ?? "";
 
 type Message = {
   role: 'user' | 'bot';
   content: string;
-  timestamp?: Date;
 };
+
+type GroqMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+const SYSTEM_PROMPT = `You are "Hike Assistant," a hiking expert.
+Help users with trails (Pakistan & global), trip planning, safety, and gear.
+- Default language: English.
+- If user writes in Roman Urdu, reply in Roman Urdu.
+- Keep answers clear and concise.
+- Use bullet points for lists.
+- Highlight key info with **bold** text.
+If a query is not hiking-related, briefly respond and redirect to hiking.`;
+
+// 3 bouncing dots typing animation
+function TypingIndicator() {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateDot = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: -6, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.delay(600),
+        ])
+      ).start();
+
+    animateDot(dot1, 0);
+    animateDot(dot2, 150);
+    animateDot(dot3, 300);
+  }, []);
+
+  return (
+    <View style={typingStyles.container}>
+      <View style={typingStyles.bubble}>
+        <Text style={typingStyles.label}>Thinking</Text>
+        <View style={typingStyles.dotsRow}>
+          {[dot1, dot2, dot3].map((dot, i) => (
+            <Animated.View
+              key={i}
+              style={[typingStyles.dot, { transform: [{ translateY: dot }] }]}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const typingStyles = StyleSheet.create({
+  container: { alignSelf: 'flex-start', marginVertical: 6, marginLeft: 12 },
+  bubble: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  label: { color: '#9CA3AF', fontSize: 13 },
+  dotsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#22c55e' },
+});
+
+async function callGroq(conversationHistory: GroqMessage[]): Promise<string> {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      temperature: 0.7,
+      max_tokens: 1024,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...conversationHistory,
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API Error ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content as string;
+}
 
 export default function ChatWidget() {
   const [visible, setVisible] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [groqHistory, setGroqHistory] = useState<GroqMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-
   const listRef = useRef<FlatList>(null);
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
-    const userMessage: Message = {
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    // Add user message to chat
-    setMessages((prev) => [...prev, userMessage]);
+    const userText = input.trim();
     setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userText }]);
+
+    const newGroqHistory: GroqMessage[] = [
+      ...groqHistory,
+      { role: 'user', content: userText },
+    ];
     setLoading(true);
 
-    // Add thinking indicator
-    const thinkingMessage: Message = {
-      role: 'bot',
-      content: 'Thinking...',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, thinkingMessage]);
-
     try {
-      // Use centralized API client
-      const data = await api.chat.send(userMessage.content);
-
-      // Replace thinking message with actual response
-      setMessages((prev) => {
-        const withoutThinking = prev.slice(0, -1);
-        return [
-          ...withoutThinking,
-          {
-            role: 'bot',
-            content: data.reply,
-            timestamp: new Date(),
-          },
-        ];
-      });
+      const reply = await callGroq(newGroqHistory);
+      setMessages(prev => [...prev, { role: 'bot', content: reply }]);
+      setGroqHistory([...newGroqHistory, { role: 'assistant', content: reply }]);
     } catch (error) {
-      console.error('Chat error:', error);
-      
-      // Replace thinking message with error
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Unable to connect to the server. Please try again.';
-
-      setMessages((prev) => {
-        const withoutThinking = prev.slice(0, -1);
-        return [
-          ...withoutThinking,
-          {
-            role: 'bot',
-            content: `Sorry, I encountered an error: ${errorMessage}`,
-            timestamp: new Date(),
-          },
-        ];
-      });
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'bot',
+          content: `❌ **Error:** ${errMsg}\n\nAPI key check karo.`,
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -94,30 +160,28 @@ export default function ChatWidget() {
 
   const clearChat = () => {
     setMessages([]);
+    setGroqHistory([]);
   };
 
-  const closeChat = () => {
-    setVisible(false);
-  };
+  const SUGGESTIONS = [
+    'What should I pack for a day hike?',
+    'How to prepare for high elevation hiking?',
+    'What are the best hiking trails in Pakistan?',
+  ];
 
   return (
     <>
-      {/* Floating Chat Button */}
-      <Pressable 
-        style={styles.floatingBtn} 
+      <Pressable
+        style={styles.floatingBtn}
         onPress={() => setVisible(true)}
-        android_ripple={{ color: 'rgba(255, 255, 255, 0.2)' }}
+        android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
       >
         <Text style={styles.icon}>💬</Text>
       </Pressable>
 
-      {/* Chat Modal */}
-      <Modal 
-        visible={visible} 
-        animationType="slide"
-        onRequestClose={closeChat}
-      >
+      <Modal visible={visible} animationType="slide" onRequestClose={() => setVisible(false)}>
         <SafeAreaView style={styles.modal}>
+
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -127,64 +191,46 @@ export default function ChatWidget() {
               <View>
                 <Text style={styles.headerTitle}>Hike Assistant</Text>
                 <Text style={styles.headerSubtitle}>
-                  Always here to help
+                  {loading ? '✍️ Typing...' : '🟢 Online'}
                 </Text>
               </View>
             </View>
-            
             <View style={styles.headerActions}>
               {messages.length > 0 && (
-                <Pressable 
-                  onPress={clearChat} 
-                  style={styles.headerButton}
-                  android_ripple={{ color: 'rgba(255, 255, 255, 0.1)' }}
-                >
+                <Pressable onPress={clearChat} style={styles.headerButton}>
                   <Text style={styles.clearText}>Clear</Text>
                 </Pressable>
               )}
-              <Pressable 
-                onPress={closeChat}
-                style={styles.headerButton}
-                android_ripple={{ color: 'rgba(255, 255, 255, 0.1)' }}
-              >
+              <Pressable onPress={() => setVisible(false)} style={styles.headerButton}>
                 <Text style={styles.closeText}>Close</Text>
               </Pressable>
             </View>
           </View>
 
           {/* Messages */}
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             style={styles.content}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           >
-            {messages.length === 0 ? (
+            {messages.length === 0 && !loading ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>🏔️</Text>
-                <Text style={styles.emptyTitle}>Welcome to Hike Assistant!</Text>
+                <Text style={styles.emptyTitle}>Hike Assistant</Text>
                 <Text style={styles.emptyMessage}>
-                  Ask me anything about hiking, trails, safety, or equipment.
+                  Ask anything about trails, safety, or equipment!
                 </Text>
                 <View style={styles.suggestionsContainer}>
-                  <Text style={styles.suggestionsTitle}>Try asking:</Text>
-                  <Pressable 
-                    style={styles.suggestionButton}
-                    onPress={() => setInput('What should I pack for a day hike?')}
-                  >
-                    <Text style={styles.suggestionText}>What should I pack for a day hike?</Text>
-                  </Pressable>
-                  <Pressable 
-                    style={styles.suggestionButton}
-                    onPress={() => setInput('How do I prepare for high elevation?')}
-                  >
-                    <Text style={styles.suggestionText}>How do I prepare for high elevation?</Text>
-                  </Pressable>
-                  <Pressable 
-                    style={styles.suggestionButton}
-                    onPress={() => setInput('What are the 10 essentials?')}
-                  >
-                    <Text style={styles.suggestionText}>What are the 10 essentials?</Text>
-                  </Pressable>
+                  <Text style={styles.suggestionsTitle}>Try karo:</Text>
+                  {SUGGESTIONS.map(q => (
+                    <Pressable
+                      key={q}
+                      style={styles.suggestionButton}
+                      onPress={() => setInput(q)}
+                    >
+                      <Text style={styles.suggestionText}>{q}</Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
             ) : (
@@ -196,31 +242,24 @@ export default function ChatWidget() {
                   <ChatBubble role={item.role} content={item.content} />
                 )}
                 contentContainerStyle={styles.messages}
-                onContentSizeChange={() => 
+                ListFooterComponent={loading ? <TypingIndicator /> : null}
+                onContentSizeChange={() =>
                   listRef.current?.scrollToEnd({ animated: true })
                 }
-                onLayout={() => 
+                onLayout={() =>
                   listRef.current?.scrollToEnd({ animated: false })
                 }
               />
             )}
-
-            {/* Loading indicator */}
-            {loading && (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#22c55e" />
-                <Text style={styles.loadingText}>Assistant is typing...</Text>
-              </View>
-            )}
           </KeyboardAvoidingView>
 
-          {/* Input */}
           <ChatInput
             input={input}
             setInput={setInput}
             onSend={sendMessage}
             loading={loading}
           />
+
         </SafeAreaView>
       </Modal>
     </>
@@ -236,23 +275,14 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 30,
     zIndex: 999,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
-    elevation: 6,
   },
-  icon: {
-    color: '#ffffff',
-    fontSize: 22,
-  },
-  modal: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
+  icon: { color: '#ffffff', fontSize: 22 },
+  modal: { flex: 1, backgroundColor: '#0f172a' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -263,11 +293,7 @@ const styles = StyleSheet.create({
     borderColor: '#1f2933',
     backgroundColor: '#020617',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   avatar: {
     width: 40,
     height: 40,
@@ -277,61 +303,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    fontSize: 20,
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  headerSubtitle: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  clearText: {
-    color: '#9CA3AF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  closeText: {
-    color: '#16a34a',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  content: {
-    flex: 1,
-  },
-  messages: {
-    padding: 12,
-    paddingBottom: 20,
-  },
+  avatarText: { fontSize: 20 },
+  headerTitle: { color: '#ffffff', fontWeight: 'bold', fontSize: 16 },
+  headerSubtitle: { color: '#9CA3AF', fontSize: 12, marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  headerButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  clearText: { color: '#9CA3AF', fontWeight: '600', fontSize: 14 },
+  closeText: { color: '#16a34a', fontWeight: '600', fontSize: 14 },
+  content: { flex: 1 },
+  messages: { padding: 12, paddingBottom: 20 },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
+  emptyIcon: { fontSize: 64, marginBottom: 16 },
+  emptyTitle: { color: '#ffffff', fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   emptyMessage: {
     color: '#9CA3AF',
     fontSize: 14,
@@ -339,10 +327,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 24,
   },
-  suggestionsContainer: {
-    width: '100%',
-    maxWidth: 320,
-  },
+  suggestionsContainer: { width: '100%', maxWidth: 320 },
   suggestionsTitle: {
     color: '#9CA3AF',
     fontSize: 12,
@@ -359,25 +344,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  suggestionText: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginHorizontal: 12,
-    marginBottom: 8,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-  },
-  loadingText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginLeft: 8,
-  },
+  suggestionText: { color: '#e2e8f0', fontSize: 14, textAlign: 'center' },
 });

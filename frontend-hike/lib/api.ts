@@ -1,10 +1,8 @@
-declare const __DEV__: boolean;
-
-// For Android emulator, use 10.0.2.2 to reach host's localhost
-// For physical device, change to your machine's local IP
-const API_BASE_URL = __DEV__
-  ? "http://10.0.2.2:8000"
-  : "https://your-production-url.com";
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (typeof __DEV__ !== "undefined" && __DEV__
+    ? "http://10.0.2.2:8000"      // Android emulator fallback
+    : "https://your-production-url.com");
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
