@@ -15,6 +15,7 @@ import {
   StyleSheet,
 } from "react-native";
 import SafeScreen from "../../components/SafeScreen";
+import { useActivities } from "../../hooks/useActivities";
 
 type SettingItem = { label: string; icon: string; onPress: () => void };
 
@@ -25,6 +26,28 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { user: clerkUser } = useUser();
   const router = useRouter();
+
+  // ── Real activity stats ───────────────────────────────────────────────────
+  const { data: activities = [] } = useActivities();
+
+  const totalActivities = activities.length;
+
+  const totalDistanceKm = activities.reduce((sum: number, act: any) => {
+    // distance stored in metres in backend, kilometres in local storage
+    const km =
+      act.distance > 1000
+        ? act.distance / 1000   // was stored as metres
+        : act.distance;         // already km
+    return sum + (km || 0);
+  }, 0);
+
+  const totalDurationMinutes = activities.reduce((sum: number, act: any) => {
+    return sum + (act.duration || 0);
+  }, 0);
+  const totalHours = Math.floor(totalDurationMinutes / 60);
+
+  const savedTrailsCount = clerkUser ? 0 : 0; // placeholder — extend when save-trail backend is ready
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Instant — Clerk caches this on login, zero network calls
   const displayName =
@@ -162,7 +185,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Profile Card — shows instantly, no spinner */}
+        {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
             <TouchableOpacity
@@ -201,24 +224,27 @@ export default function ProfileScreen() {
 
           <View style={styles.divider} />
 
+          {/* ── Real stats — pulled from useActivities ── */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{totalActivities}</Text>
               <Text style={styles.statLabel}>Activities</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>
+                {totalDistanceKm.toFixed(1)}
+              </Text>
               <Text style={styles.statLabel}>Km Total</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>0m</Text>
+              <Text style={styles.statValue}>{totalHours}h</Text>
               <Text style={styles.statLabel}>Time</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{savedTrailsCount}</Text>
               <Text style={styles.statLabel}>Saved</Text>
             </View>
           </View>
@@ -268,23 +294,60 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Timeline Tab */}
+        {/* Timeline Tab — shows real recorded activities */}
         {selectedTab === "timeline" && (
           <View style={{ paddingHorizontal: 20 }}>
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>No Activities Yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Start recording hikes to see your timeline here
-              </Text>
-            </View>
+            {activities.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={64} color="#D1D5DB" />
+                <Text style={styles.emptyTitle}>No Activities Yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Start recording hikes to see your timeline here
+                </Text>
+              </View>
+            ) : (
+              activities.map((act: any) => (
+                <View key={act.id} style={styles.timelineCard}>
+                  <View style={styles.timelineDot} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.timelineTitle}>
+                      {act.trail_name || "Unnamed Hike"}
+                    </Text>
+                    <Text style={styles.timelineDate}>
+                      {act.start_time
+                        ? new Date(act.start_time).toLocaleDateString("en-PK", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : ""}
+                    </Text>
+                    <View style={styles.timelineStats}>
+                      <Text style={styles.timelineStat}>
+                        🥾{" "}
+                        {act.distance > 1000
+                          ? (act.distance / 1000).toFixed(1)
+                          : (act.distance || 0).toFixed(1)}{" "}
+                        km
+                      </Text>
+                      <Text style={styles.timelineStat}>
+                        ⏱️ {act.duration || 0} min
+                      </Text>
+                      <Text style={styles.timelineStat}>
+                        ⛰️ {(act.elevation_gain || 0).toFixed(0)}m
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
 
-      {/* Share Modal — plain View, no SafeAreaView */}
+      {/* Share Modal */}
       <Modal
         visible={showShareModal}
         animationType="slide"
@@ -466,6 +529,35 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   emptySubtitle: { color: "#6B7280", textAlign: "center", marginTop: 8 },
+  timelineCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#16a34a",
+    marginTop: 4,
+    marginRight: 12,
+  },
+  timelineTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+    marginBottom: 2,
+  },
+  timelineDate: { fontSize: 12, color: "#9CA3AF", marginBottom: 6 },
+  timelineStats: { flexDirection: "row", gap: 12 },
+  timelineStat: { fontSize: 12, color: "#6B7280" },
   modalContainer: { flex: 1, backgroundColor: "white", paddingTop: 50 },
   modalHeader: {
     flexDirection: "row",

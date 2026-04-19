@@ -1,5 +1,3 @@
-## backend-hike/app/config.py
-
 import os
 from dotenv import load_dotenv
 
@@ -11,3 +9,6 @@ DATABASE_NAME = os.getenv("DATABASE_NAME", "hikeplanner")
 
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY not found in .env")
+
+if "localhost" in MONGODB_URL or "127.0.0.1" in MONGODB_URL:
+    print("⚠️  WARNING: You are using a LOCAL MongoDB. Switch to Atlas for cloud hosting.")

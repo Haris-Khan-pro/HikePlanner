@@ -10,11 +10,45 @@ import TrailCard from "../../components/TrailCard";
 import ChatWidget from "../../components/chat/ChatWidget";
 import { categories, mockTrails, Trail } from "../../types";
 
+// ---------------------------------------------------------------------------
+// Pakistan keyword list — used to detect if a search is Pakistan-relevant.
+// If the query contains NONE of these words and returns 0 results,
+// we show the "not in our Pakistan database" message instead of a plain empty state.
+// ---------------------------------------------------------------------------
+const PAKISTAN_KEYWORDS = [
+  "pakistan", "gilgit", "baltistan", "skardu", "hunza", "nathiagali",
+  "islamabad", "fairy meadows", "fairy", "meadows", "k2", "nanga parbat",
+  "nanga", "parbat", "swat", "chitral", "naltar", "kumrat", "concordia",
+  "karakoram", "himalaya", "himalayas", "hindukush", "khyber", "kpk",
+  "punjab", "balochistan", "murree", "abbottabad", "pir sohawa", "margalla",
+  "rawal", "ayubia", "kund malir", "gondogoro", "hispar", "biafo", "hushe",
+  "diamer", "dir", "kohistan", "kaghan", "shogran", "neelum", "deosai",
+  "ratti", "gali", "chitta", "katha", "makra", "azad", "kashmir",
+  "trek", "trail", "hike", "peak", "base camp", "valley", "glacier",
+  "pass", "lake", "forest", "meadow", "mountain", "summit",
+];
+
+function isPakistanRelevantSearch(query: string): boolean {
+  if (query.trim().length < 3) return true; // too short to judge — don't flag it
+  const lower = query.toLowerCase();
+  return PAKISTAN_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// Quick-tap suggestions shown when a non-Pakistani location is searched
+const PAKISTAN_SUGGESTIONS = [
+  "Fairy Meadows",
+  "Skardu",
+  "Naltar Valley",
+  "Nanga Parbat",
+  "Deosai Plains",
+  "Neelum Valley",
+];
+
 export default function ExploreScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
-  const [selectedCategory, setSelectedCategory] = useState("1"); 
+  const [selectedCategory, setSelectedCategory] = useState("1");
   const [trails, setTrails] = useState<Trail[]>(mockTrails);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -42,6 +76,12 @@ export default function ExploreScreen() {
       return matchesSearch && matchesDifficulty && matchesCategory;
     });
   }, [trails, searchQuery, selectedDifficulty, selectedCategory]);
+
+  // True when: user typed something meaningful + no results + query looks non-Pakistani
+  const isNonPakistaniSearch =
+    searchQuery.trim().length >= 3 &&
+    filteredTrails.length === 0 &&
+    !isPakistanRelevantSearch(searchQuery);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -92,7 +132,7 @@ export default function ExploreScreen() {
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
-          placeholder="Search trails, locations..."
+          placeholder="Search Pakistani trails, locations..."
         />
 
         {/* Categories */}
@@ -116,7 +156,7 @@ export default function ExploreScreen() {
           </Text>
         </View>
 
-        {/* Trail Cards */}
+        {/* Trail Cards / Empty States */}
         {filteredTrails.length > 0 ? (
           filteredTrails.map((trail) => (
             <TrailCard
@@ -126,7 +166,48 @@ export default function ExploreScreen() {
               onToggleSave={handleToggleSave}
             />
           ))
+        ) : isNonPakistaniSearch ? (
+          // ── Non-Pakistani location searched ──────────────────────────────
+          <View className="px-4 py-10 items-center">
+            <View className="bg-white/10 rounded-full p-5 mb-4">
+              <Ionicons name="location-outline" size={52} color="#4ADE80" />
+            </View>
+
+            <Text className="text-xl font-bold text-white mb-2 text-center">
+              Not in our Pakistan database
+            </Text>
+            <Text className="text-white/70 text-center text-sm leading-5 mb-6">
+              HikePlanner covers hiking trails across Pakistan only.{"\n"}
+              Try searching for one of these:
+            </Text>
+
+            {/* Suggestion chips */}
+            <View className="flex-row flex-wrap justify-center gap-2">
+              {PAKISTAN_SUGGESTIONS.map((suggestion) => (
+                <TouchableOpacity
+                  key={suggestion}
+                  onPress={() => setSearchQuery(suggestion)}
+                  className="bg-green-600 px-4 py-2 rounded-full mb-2"
+                  activeOpacity={0.75}
+                >
+                  <Text className="text-white text-sm font-semibold">
+                    {suggestion}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Clear search */}
+            <TouchableOpacity
+              onPress={() => setSearchQuery("")}
+              className="mt-6 flex-row items-center"
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#9CA3AF" />
+              <Text className="text-gray-400 text-sm ml-1">Clear search</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
+          // ── Generic empty state (filters returned nothing) ────────────────
           <View className="px-4 py-12 items-center">
             <Ionicons name="sad-outline" size={64} color="#9CA3AF" />
             <Text className="text-xl font-semibold text-gray-900 mb-2 mt-4">
