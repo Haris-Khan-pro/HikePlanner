@@ -1,5 +1,3 @@
-// frontend-hike/app/recommendations.tsx
-
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -12,7 +10,8 @@ import {
 } from "react-native";
 import SafeScreen from "../components/SafeScreen";
 import TrailCard from "../components/TrailCard";
-import { mockTrails, Trail } from "../types";
+import { useTrails, useSaveTrail, useUnsaveTrail } from "../hooks/useTrails";
+import { Trail } from "../types";
 
 const TRENDING_LOCATIONS = [
   { name: "Skardu", emoji: "🏔️", posts: 142, rating: 4.8 },
@@ -34,41 +33,51 @@ type FilterKey = (typeof FILTERS)[number]["key"];
 
 export default function RecommendationsScreen() {
   const router = useRouter();
-  const [trails, setTrails] = useState<Trail[]>(mockTrails);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const {
+    data: allTrails = [],
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useTrails({
+    featured: activeFilter === "featured" ? true : undefined,
+    popular: activeFilter === "popular" ? true : undefined,
+    difficulty: activeFilter === "easy" ? "Easy" : undefined,
+  } as any);
+
+  const saveTrail = useSaveTrail();
+  const unsaveTrail = useUnsaveTrail();
 
   const handleToggleSave = (trailId: string) => {
-    setTrails((prev) =>
-      prev.map((t) => (t.id === trailId ? { ...t, isSaved: !t.isSaved } : t))
-    );
+    const trail = allTrails.find((t) => t.id === trailId);
+    if (!trail) return;
+    if (trail.isSaved) {
+      unsaveTrail.mutate(trailId);
+    } else {
+      saveTrail.mutate(trailId);
+    }
   };
 
-  const handleTrailPress = (trail: Trail) => {
-    router.push({ pathname: "/trail/[id]", params: { id: trail.id } });
-  };
-
-  const filteredTrails = trails.filter((t) => {
+  const filteredTrails = allTrails.filter((t) => {
     if (activeFilter === "featured") return t.isFeatured;
     if (activeFilter === "popular") return t.isPopular;
     if (activeFilter === "easy") return t.difficulty === "Easy";
     return true;
   });
 
+  const handleTrailPress = (trail: Trail) => {
+    router.push({ pathname: "/trail/[id]", params: { id: trail.id } });
+  };
+
   return (
     <SafeScreen>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
       >
-        {/* Header */}
         <View className="px-4 pt-4 pb-2 flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="mr-3">
             <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -79,7 +88,6 @@ export default function RecommendationsScreen() {
           </View>
         </View>
 
-        {/* Trending Locations */}
         <View className="mt-4 mb-2">
           <Text className="text-base font-bold text-white px-4 mb-3">
             🔥 Trending Locations
@@ -105,7 +113,6 @@ export default function RecommendationsScreen() {
           </ScrollView>
         </View>
 
-        {/* Filter Chips */}
         <View className="mt-4 mb-2">
           <ScrollView
             horizontal
@@ -134,15 +141,17 @@ export default function RecommendationsScreen() {
           </ScrollView>
         </View>
 
-        {/* Results Count */}
         <View className="px-4 py-3">
-          <Text className="text-sm text-white/80">
-            {filteredTrails.length}{" "}
-            {filteredTrails.length === 1 ? "trail" : "trails"} recommended
-          </Text>
+          {isLoading ? (
+            <Text className="text-sm text-white/60">Loading recommendations...</Text>
+          ) : (
+            <Text className="text-sm text-white/80">
+              {filteredTrails.length}{" "}
+              {filteredTrails.length === 1 ? "trail" : "trails"} recommended
+            </Text>
+          )}
         </View>
 
-        {/* Trail Cards */}
         {filteredTrails.length > 0 ? (
           filteredTrails.map((trail) => (
             <TrailCard
