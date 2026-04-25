@@ -1,16 +1,16 @@
-# backend-hike/app/routes/trails.py
-
-from fastapi import APIRouter, HTTPException, Query
+# app/routes/trails.py
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.database import trails_collection
 from app.models.trail import TrailCreate, TrailInDB, TrailUpdate
-from datetime import datetime
+from app.auth import get_current_user
+from datetime import datetime, timezone
 from bson import ObjectId
 from typing import Optional
 
 router = APIRouter(prefix="/api/trails", tags=["Trails"])
 
 
-# ── Get all trails (with optional filters) ───────────────────────────────────
+# ── PUBLIC: Get all trails (with optional filters) ────────────────────────────
 @router.get("/")
 async def get_trails(
     difficulty: Optional[str] = Query(None),
@@ -27,9 +27,9 @@ async def get_trails(
         query["isPopular"] = popular
     if search:
         query["$or"] = [
-            {"name": {"$regex": search, "$options": "i"}},
+            {"name":     {"$regex": search, "$options": "i"}},
             {"location": {"$regex": search, "$options": "i"}},
-            {"tags": {"$regex": search, "$options": "i"}},
+            {"tags":     {"$regex": search, "$options": "i"}},
         ]
 
     trails = []
@@ -40,7 +40,7 @@ async def get_trails(
     return trails
 
 
-# ── Get single trail ──────────────────────────────────────────────────────────
+# ── PUBLIC: Get single trail ──────────────────────────────────────────────────
 @router.get("/{trail_id}")
 async def get_trail(trail_id: str):
     try:
@@ -54,17 +54,24 @@ async def get_trail(trail_id: str):
     return trail
 
 
-# ── Create trail ──────────────────────────────────────────────────────────────
+# ── PROTECTED: Create trail ───────────────────────────────────────────────────
 @router.post("/")
-async def create_trail(trail: TrailCreate):
-    trail_in_db = TrailInDB(**trail.dict(), created_at=datetime.utcnow())
+async def create_trail(
+    trail: TrailCreate,
+    current_user: str = Depends(get_current_user),   # ← requires valid token
+):
+    trail_in_db = TrailInDB(**trail.dict(), created_at=datetime.now(timezone.utc))
     result = await trails_collection.insert_one(trail_in_db.dict())
     return {"message": "Trail created!", "trail_id": str(result.inserted_id)}
 
 
-# ── Update trail ──────────────────────────────────────────────────────────────
+# ── PROTECTED: Update trail ───────────────────────────────────────────────────
 @router.put("/{trail_id}")
-async def update_trail(trail_id: str, trail_update: TrailUpdate):
+async def update_trail(
+    trail_id: str,
+    trail_update: TrailUpdate,
+    current_user: str = Depends(get_current_user),   # ← requires valid token
+):
     update_data = {k: v for k, v in trail_update.dict().items() if v is not None}
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
@@ -82,9 +89,12 @@ async def update_trail(trail_id: str, trail_update: TrailUpdate):
     return {"message": "Trail updated!"}
 
 
-# ── Delete trail ──────────────────────────────────────────────────────────────
+# ── PROTECTED: Delete trail ───────────────────────────────────────────────────
 @router.delete("/{trail_id}")
-async def delete_trail(trail_id: str):
+async def delete_trail(
+    trail_id: str,
+    current_user: str = Depends(get_current_user),   # ← requires valid token
+):
     try:
         result = await trails_collection.delete_one({"_id": ObjectId(trail_id)})
     except Exception:

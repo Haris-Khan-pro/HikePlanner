@@ -1,38 +1,43 @@
-# backend-hike/app/models/hike.py
-
+# app/models/hike.py
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-# What data we receive when logging a hike
+
 class HikeCreate(BaseModel):
-    trail_name: str
-    distance_km: float
-    duration_minutes: int
-    difficulty: str          # "easy", "medium", "hard"
-    elevation_gain_m: Optional[float] = None
-    notes: Optional[str] = None
-    user_id: str             # who did this hike
+    trail_name:        str
+    trail_id:          Optional[str] = None    # link to trails collection
+    location:          Optional[str] = None    # e.g. "Hunza Valley, Gilgit-Baltistan"
+    distance_km:       float
+    duration_minutes:  int
+    difficulty:        str                     # "easy" | "moderate" | "hard"
+    elevation_gain_m:  Optional[float] = None
+    notes:             Optional[str] = None
+    user_id:           str                     # clerk_user_id of the hiker
 
-# What we send back
+
 class HikeResponse(BaseModel):
-    id: str
-    trail_name: str
-    distance_km: float
-    duration_minutes: int
-    difficulty: str
-    elevation_gain_m: Optional[float]
-    notes: Optional[str]
-    user_id: str
-    created_at: datetime
+    id:                str
+    trail_name:        str
+    trail_id:          Optional[str]
+    location:          Optional[str]
+    distance_km:       float
+    duration_minutes:  int
+    difficulty:        str
+    elevation_gain_m:  Optional[float]
+    notes:             Optional[str]
+    user_id:           str
+    created_at:        datetime
 
-# What's stored in DB
+
 class HikeInDB(BaseModel):
-    trail_name: str
-    distance_km: float
-    duration_minutes: int
-    difficulty: str
-    elevation_gain_m: Optional[float] = None
-    notes: Optional[str] = None
-    user_id: str
-    created_at: datetime = datetime.utcnow()
+    trail_name:        str
+    trail_id:          Optional[str] = None
+    location:          Optional[str] = None
+    distance_km:       float
+    duration_minutes:  int
+    difficulty:        str
+    elevation_gain_m:  Optional[float] = None
+    notes:             Optional[str] = None
+    user_id:           str
+    created_at:        datetime = datetime.utcnow()
