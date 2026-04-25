@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   ScrollView,
   Text,
@@ -13,10 +12,34 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { mockTrails } from '../../types';
+import { useTrail } from '@/hooks/useTrails';
 import { useReviews, useCreateReview } from '@/hooks/useReviews';
 
-const { width } = Dimensions.get('window');
+// Weather helper (Open-Meteo — free, no API key needed)
+const WMO_DESCRIPTIONS: Record<number, string> = {
+  0: 'Clear Sky', 1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Icy Fog', 51: 'Light Drizzle', 53: 'Drizzle',
+  55: 'Heavy Drizzle', 61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+  71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow', 80: 'Showers',
+  81: 'Heavy Showers', 82: 'Violent Showers', 95: 'Thunderstorm',
+};
+
+async function fetchTrailWeather(lat: number, lon: number): Promise<string> {
+  try {
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,weathercode&temperature_unit=celsius&forecast_days=1`;
+    const res = await fetch(url);
+    if (!res.ok) return 'Unavailable';
+    const json = await res.json();
+    const temp = Math.round(json.current.temperature_2m);
+    const code = json.current.weathercode as number;
+    const desc = WMO_DESCRIPTIONS[code] ?? 'Cloudy';
+    return `${desc}, ${temp}°C`;
+  } catch {
+    return 'Unavailable';
+  }
+}
 
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
@@ -37,9 +60,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 function ReviewCard({ review }: { review: any }) {
   const date = new Date(review.created_at);
   const formatted = date.toLocaleDateString('en-PK', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
   return (
     <View className="bg-gray-50 rounded-xl p-4 mb-3">
@@ -74,15 +95,35 @@ function ReviewCard({ review }: { review: any }) {
 export default function TrailDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const trail = mockTrails.find((t) => t.id === id);
 
-  const [isSaved, setIsSaved] = useState(trail?.isSaved || false);
+  const { data: trail, isLoading: trailLoading } = useTrail(String(id));
+
+  const [isSaved, setIsSaved] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'overview' | 'reviews'>('overview');
+  const [weatherText, setWeatherText] = useState<string>('Loading...');
+
+  useEffect(() => {
+    if (trail) setIsSaved(trail.isSaved ?? false);
+  }, [trail?.id]);
+
+  useEffect(() => {
+    if (trail) {
+      fetchTrailWeather(trail.latitude, trail.longitude).then(setWeatherText);
+    }
+  }, [trail?.id]);
 
   const { data: reviews = [], isLoading: reviewsLoading } = useReviews(String(id));
   const createReview = useCreateReview(String(id));
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState('');
+
+  if (trailLoading) {
+    return (
+      <View className="flex-1 bg-gray-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#16a34a" />
+      </View>
+    );
+  }
 
   if (!trail) {
     return (
@@ -255,7 +296,7 @@ export default function TrailDetailsScreen() {
                       <Ionicons name="partly-sunny" size={20} color="#F59E0B" />
                       <Text className="text-gray-700 ml-2">Weather</Text>
                     </View>
-                    <Text className="font-semibold text-gray-900">Sunny, 22°C</Text>
+                    <Text className="font-semibold text-gray-900">{weatherText}</Text>
                   </View>
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
@@ -267,7 +308,6 @@ export default function TrailDetailsScreen() {
                 </View>
               </View>
 
-              {/* Real Map */}
               <View className="mb-6">
                 <Text className="text-lg font-bold text-gray-900 mb-3">Location</Text>
                 <MapView
@@ -292,7 +332,6 @@ export default function TrailDetailsScreen() {
             </View>
 
           ) : (
-            /* Reviews Tab */
             <View className="px-5 py-5">
               {reviewsLoading ? (
                 <ActivityIndicator color="#16a34a" style={{ marginVertical: 24 }} />
@@ -307,13 +346,10 @@ export default function TrailDetailsScreen() {
                 reviews.map((review) => <ReviewCard key={review.id} review={review} />)
               )}
 
-              {/* Write a Review Form */}
               <View className="mt-4 bg-gray-50 rounded-xl p-4 border border-gray-200">
                 <Text className="text-base font-bold text-gray-900 mb-3">Write a Review</Text>
-
                 <Text className="text-sm text-gray-600 mb-2">Your Rating</Text>
                 <StarPicker value={newRating} onChange={setNewRating} />
-
                 <Text className="text-sm text-gray-600 mt-4 mb-2">Your Comment (optional)</Text>
                 <TextInput
                   value={newComment}
@@ -325,7 +361,6 @@ export default function TrailDetailsScreen() {
                   className="bg-white border border-gray-200 rounded-xl p-3 text-gray-900 text-sm"
                   style={{ minHeight: 80, textAlignVertical: 'top' }}
                 />
-
                 <TouchableOpacity
                   onPress={handleSubmitReview}
                   disabled={createReview.isPending}

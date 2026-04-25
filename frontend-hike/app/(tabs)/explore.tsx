@@ -8,13 +8,9 @@ import SafeScreen from "../../components/SafeScreen";
 import SearchBar from "../../components/SearchBar";
 import TrailCard from "../../components/TrailCard";
 import ChatWidget from "../../components/chat/ChatWidget";
-import { categories, mockTrails, Trail } from "../../types";
+import { useTrails, useSaveTrail, useUnsaveTrail } from "../../hooks/useTrails";
+import { categories, Trail } from "../../types";
 
-// ---------------------------------------------------------------------------
-// Pakistan keyword list — used to detect if a search is Pakistan-relevant.
-// If the query contains NONE of these words and returns 0 results,
-// we show the "not in our Pakistan database" message instead of a plain empty state.
-// ---------------------------------------------------------------------------
 const PAKISTAN_KEYWORDS = [
   "pakistan", "gilgit", "baltistan", "skardu", "hunza", "nathiagali",
   "islamabad", "fairy meadows", "fairy", "meadows", "k2", "nanga parbat",
@@ -29,12 +25,11 @@ const PAKISTAN_KEYWORDS = [
 ];
 
 function isPakistanRelevantSearch(query: string): boolean {
-  if (query.trim().length < 3) return true; // too short to judge — don't flag it
+  if (query.trim().length < 3) return true;
   const lower = query.toLowerCase();
   return PAKISTAN_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-// Quick-tap suggestions shown when a non-Pakistani location is searched
 const PAKISTAN_SUGGESTIONS = [
   "Fairy Meadows",
   "Skardu",
@@ -49,8 +44,25 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("1");
-  const [trails, setTrails] = useState<Trail[]>(mockTrails);
-  const [refreshing, setRefreshing] = useState(false);
+
+  const { data: trails = [], isLoading, refetch, isRefetching } = useTrails({
+    search: searchQuery || undefined,
+    difficulty: selectedDifficulty !== "All" ? selectedDifficulty : undefined,
+    category: selectedCategory,
+  });
+
+  const saveTrail = useSaveTrail();
+  const unsaveTrail = useUnsaveTrail();
+
+  const handleToggleSave = (trailId: string) => {
+    const trail = trails.find((t) => t.id === trailId);
+    if (!trail) return;
+    if (trail.isSaved) {
+      unsaveTrail.mutate(trailId);
+    } else {
+      saveTrail.mutate(trailId);
+    }
+  };
 
   const filteredTrails = useMemo(() => {
     return trails.filter((trail) => {
@@ -70,25 +82,17 @@ export default function ExploreScreen() {
       } else if (selectedCategory === "3") {
         matchesCategory = trail.isPopular;
       } else if (selectedCategory === "5") {
-        matchesCategory = trail.isSaved;
+        matchesCategory = trail.isSaved ?? false;
       }
 
       return matchesSearch && matchesDifficulty && matchesCategory;
     });
   }, [trails, searchQuery, selectedDifficulty, selectedCategory]);
 
-  // True when: user typed something meaningful + no results + query looks non-Pakistani
   const isNonPakistaniSearch =
     searchQuery.trim().length >= 3 &&
     filteredTrails.length === 0 &&
     !isPakistanRelevantSearch(searchQuery);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
-  };
 
   const handleTrailPress = (trail: Trail) => {
     router.push({
@@ -97,23 +101,14 @@ export default function ExploreScreen() {
     });
   };
 
-  const handleToggleSave = (trailId: string) => {
-    setTrails((prevTrails) =>
-      prevTrails.map((trail) =>
-        trail.id === trailId ? { ...trail, isSaved: !trail.isSaved } : trail,
-      ),
-    );
-  };
-
   return (
     <SafeScreen>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
       >
-        {/* Header */}
         <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
           <View>
             <Text className="text-3xl font-bold text-white">Explore Trails</Text>
@@ -128,35 +123,34 @@ export default function ExploreScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Search Bar */}
         <SearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Search Pakistani trails, locations..."
         />
 
-        {/* Categories */}
         <CategorySection
           categories={categories}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
         />
 
-        {/* Filter Chips */}
         <FilterChips
           selectedDifficulty={selectedDifficulty}
           onSelectDifficulty={setSelectedDifficulty}
         />
 
-        {/* Results Count */}
         <View className="px-4 py-3">
-          <Text className="text-sm text-gray-600">
-            {filteredTrails.length}{" "}
-            {filteredTrails.length === 1 ? "trail" : "trails"} found
-          </Text>
+          {isLoading ? (
+            <Text className="text-sm text-gray-400">Loading trails...</Text>
+          ) : (
+            <Text className="text-sm text-gray-600">
+              {filteredTrails.length}{" "}
+              {filteredTrails.length === 1 ? "trail" : "trails"} found
+            </Text>
+          )}
         </View>
 
-        {/* Trail Cards / Empty States */}
         {filteredTrails.length > 0 ? (
           filteredTrails.map((trail) => (
             <TrailCard
@@ -167,12 +161,10 @@ export default function ExploreScreen() {
             />
           ))
         ) : isNonPakistaniSearch ? (
-          // ── Non-Pakistani location searched ──────────────────────────────
           <View className="px-4 py-10 items-center">
             <View className="bg-white/10 rounded-full p-5 mb-4">
               <Ionicons name="location-outline" size={52} color="#4ADE80" />
             </View>
-
             <Text className="text-xl font-bold text-white mb-2 text-center">
               Not in our Pakistan database
             </Text>
@@ -180,8 +172,6 @@ export default function ExploreScreen() {
               HikePlanner covers hiking trails across Pakistan only.{"\n"}
               Try searching for one of these:
             </Text>
-
-            {/* Suggestion chips */}
             <View className="flex-row flex-wrap justify-center gap-2">
               {PAKISTAN_SUGGESTIONS.map((suggestion) => (
                 <TouchableOpacity
@@ -196,8 +186,6 @@ export default function ExploreScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
-            {/* Clear search */}
             <TouchableOpacity
               onPress={() => setSearchQuery("")}
               className="mt-6 flex-row items-center"
@@ -207,7 +195,6 @@ export default function ExploreScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          // ── Generic empty state (filters returned nothing) ────────────────
           <View className="px-4 py-12 items-center">
             <Ionicons name="sad-outline" size={64} color="#9CA3AF" />
             <Text className="text-xl font-semibold text-gray-900 mb-2 mt-4">
@@ -219,11 +206,9 @@ export default function ExploreScreen() {
           </View>
         )}
 
-        {/* Bottom Padding */}
         <View className="h-6" />
       </ScrollView>
 
-      {/* Chat Widget */}
       <ChatWidget />
     </SafeScreen>
   );
