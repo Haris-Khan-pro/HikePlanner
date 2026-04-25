@@ -1,10 +1,21 @@
 import asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime
+import os
+from datetime import datetime, timezone
 
-# ── Connect directly (no need to import app) ─────────────────────────────────
-MONGODB_URL = "mongodb+srv://aazibali07:Hariskhan07@cluster0.vwpei60.mongodb.net/hikeplanner?retryWrites=true&w=majority&appName=Cluster0"
-DATABASE_NAME = "hikeplanner"
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+
+# ── Load credentials from .env ────────────────────────────────────────────────
+load_dotenv()
+
+MONGODB_URL = os.getenv("MONGODB_URL")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "hikeplanner")
+
+if not MONGODB_URL:
+    raise RuntimeError(
+        "❌ MONGODB_URL not found. "
+        "Make sure backend-hike/.env contains MONGODB_URL=your_atlas_url"
+    )
 
 client = AsyncIOMotorClient(MONGODB_URL)
 db = client[DATABASE_NAME]
@@ -22,7 +33,7 @@ TRAILS = [
         "elevation": 3300.0,
         "latitude": 35.3753,
         "longitude": 74.5864,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1585409677983-0f6c41ca9c3b?w=800&q=80",
         "tags": ["alpine", "meadows", "nanga parbat", "forest"],
         "isFeatured": True,
         "isPopular": True,
@@ -40,7 +51,7 @@ TRAILS = [
         "elevation": 4200.0,
         "latitude": 35.2372,
         "longitude": 74.5891,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80",
         "tags": ["base camp", "high altitude", "nanga parbat", "challenging"],
         "isFeatured": True,
         "isPopular": False,
@@ -58,7 +69,7 @@ TRAILS = [
         "elevation": 2900.0,
         "latitude": 36.1667,
         "longitude": 74.1833,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80",
         "tags": ["lakes", "pine forest", "valley", "photography"],
         "isFeatured": True,
         "isPopular": True,
@@ -76,7 +87,7 @@ TRAILS = [
         "elevation": 4114.0,
         "latitude": 34.9667,
         "longitude": 75.5500,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&q=80",
         "tags": ["plateau", "wildlife", "brown bear", "wildflowers"],
         "isFeatured": False,
         "isPopular": True,
@@ -94,7 +105,7 @@ TRAILS = [
         "elevation": 3700.0,
         "latitude": 34.7200,
         "longitude": 73.9500,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1439853949212-36089f25e7d0?w=800&q=80",
         "tags": ["lake", "alpine", "turquoise", "azad kashmir"],
         "isFeatured": True,
         "isPopular": True,
@@ -112,7 +123,7 @@ TRAILS = [
         "elevation": 3885.0,
         "latitude": 34.7833,
         "longitude": 73.5500,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&q=80",
         "tags": ["summit", "peak", "panoramic", "kaghan"],
         "isFeatured": False,
         "isPopular": True,
@@ -130,7 +141,7 @@ TRAILS = [
         "elevation": 4100.0,
         "latitude": 34.6800,
         "longitude": 73.9800,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1476611338391-6f395a0ebc7b?w=800&q=80",
         "tags": ["glacial lake", "photography", "high altitude", "azad kashmir"],
         "isFeatured": True,
         "isPopular": True,
@@ -148,7 +159,7 @@ TRAILS = [
         "elevation": 320.0,
         "latitude": 33.7500,
         "longitude": 73.0667,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80",
         "tags": ["beginner", "islamabad", "forest", "morning walk"],
         "isFeatured": False,
         "isPopular": True,
@@ -166,7 +177,7 @@ TRAILS = [
         "elevation": 4694.0,
         "latitude": 36.0500,
         "longitude": 74.7167,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&q=80",
         "tags": ["highest lake", "hunza", "rakaposhi", "challenging"],
         "isFeatured": True,
         "isPopular": True,
@@ -184,7 +195,7 @@ TRAILS = [
         "elevation": 3500.0,
         "latitude": 34.9167,
         "longitude": 74.0833,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1501854140801-50d01698950b?w=800&q=80",
         "tags": ["hidden gem", "village", "valley", "serene"],
         "isFeatured": False,
         "isPopular": False,
@@ -202,7 +213,7 @@ TRAILS = [
         "elevation": 2700.0,
         "latitude": 34.6167,
         "longitude": 73.4500,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1510797215324-95aa89f43c33?w=800&q=80",
         "tags": ["family friendly", "meadows", "easy", "kaghan"],
         "isFeatured": True,
         "isPopular": True,
@@ -220,7 +231,7 @@ TRAILS = [
         "elevation": 5100.0,
         "latitude": 35.8800,
         "longitude": 76.5100,
-        "image": None,
+        "image": "https://images.unsplash.com/photo-1542224566-6e85f2e6772f?w=800&q=80",
         "tags": ["legendary", "k2", "glacier", "extreme"],
         "isFeatured": True,
         "isPopular": True,
