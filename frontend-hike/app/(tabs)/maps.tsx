@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mockTrails } from "../../types";
+import { useTrails } from "@/hooks/useTrails";
 
 export default function MapsScreen() {
   const mapRef = useRef<MapView>(null);
@@ -30,8 +30,9 @@ export default function MapsScreen() {
   const [permissionAsked, setPermissionAsked] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
 
-  // Pakistani hiking trails from mockTrails
-  const hikes = mockTrails.slice(0, 5);
+  // ✅ FIX 1: Use real API hook instead of mockTrails
+  const { data: trailsData = [] } = useTrails();
+  const hikes = trailsData.slice(0, 5);
 
   useEffect(() => {
     initializeLocation();
@@ -184,7 +185,7 @@ export default function MapsScreen() {
           ))}
 
           {/* Pakistani Trail Markers */}
-          {mockTrails.map((trail) => (
+          {trailsData.map((trail) => (
             <Marker
               key={trail.id}
               coordinate={{ latitude: trail.latitude, longitude: trail.longitude }}
@@ -381,27 +382,18 @@ export default function MapsScreen() {
                 key={hike.id}
                 onPress={() =>
                   router.push({
-                    pathname: "/trail/trail-details",
-                    params: {
-                      id: hike.id,
-                      name: hike.name,
-                      difficulty: hike.difficulty,
-                      rating: hike.rating,
-                      reviews: hike.reviews,
-                    },
+                    pathname: "/trail/[id]",
+                    params: { id: hike.id },
                   })
                 }
                 className="rounded-2xl overflow-hidden bg-white mb-4 shadow-lg"
                 activeOpacity={0.8}
               >
                 <View className="relative">
-                  {/* Real trail image from mockTrails */}
                   <Image
                     source={{ uri: hike.image }}
                     className="w-full h-40"
                   />
-
-                  {/* Difficulty Badge */}
                   <View
                     className={`absolute top-3 left-3 px-3 py-1 rounded-full ${
                       hike.difficulty === "Hard" || hike.difficulty === "Expert"
@@ -415,21 +407,15 @@ export default function MapsScreen() {
                       {hike.difficulty}
                     </Text>
                   </View>
-
-                  {/* Distance */}
                   <View className="absolute bottom-3 left-3 bg-black/70 px-3 py-1 rounded-full">
                     <Text className="text-white text-sm font-semibold">
                       {hike.distance} km
                     </Text>
                   </View>
-
-                  {/* Mini Map Icon */}
                   <View className="absolute bottom-3 right-3 w-10 h-10 bg-white rounded-lg border-2 border-green-600 items-center justify-center">
                     <Ionicons name="map" size={20} color="#16a34a" />
                   </View>
                 </View>
-
-                {/* Card Info */}
                 <View className="p-3">
                   <Text className="text-gray-900 font-bold text-sm mb-1">
                     {hike.name}
@@ -443,7 +429,6 @@ export default function MapsScreen() {
                       ({hike.reviews} reviews)
                     </Text>
                   </View>
-                  {/* Real location from mockTrails — replaces the hardcoded text */}
                   <Text className="text-gray-500 text-xs">
                     📍 {hike.location}
                   </Text>
